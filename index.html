@@ -1056,7 +1056,7 @@ function GanttChart({ products, comments, onSaveComment }) {
       });
     }
     return arr;
-  }, [products, today, sortMode, search]);
+  }, [products, today, sortMode, search, selectedPm, selectedDesigner]);
 
   /* chart geometry */
   const chart = useMemo(() => {
