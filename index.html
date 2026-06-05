@@ -1084,7 +1084,8 @@ function GanttChart({ products, comments, onSaveComment }) {
   );
 
   const { pct, todayP, ticks } = chart;
-  const LABEL_W = 312;
+  const labelClass = "w-[160px] sm:w-[240px] lg:w-[312px] shrink-0";
+  const notesClass = "w-[140px] sm:w-[220px] shrink-0";
 
   return (
     <div>
@@ -1108,7 +1109,7 @@ function GanttChart({ products, comments, onSaveComment }) {
             placeholder="Search by code or title..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-64 rounded-full border border-slate-700 bg-slate-900/50 px-4 py-2 text-xs text-slate-200 focus:outline-none focus:border-sky-500 placeholder:text-slate-500 shadow-sm"
+            className="w-full sm:w-64 rounded-full border border-slate-700 bg-slate-900/50 px-4 py-2 text-xs text-slate-200 focus:outline-none focus:border-sky-500 placeholder:text-slate-500 shadow-sm"
           />
           <div className="flex items-center gap-2 rounded-full border border-slate-700 bg-slate-800/50 px-3 py-2 text-xs shadow-sm">
             <span className="font-semibold text-slate-400">Sort by:</span>
@@ -1126,11 +1127,11 @@ function GanttChart({ products, comments, onSaveComment }) {
 
       {/* horizontal scroll wrapper */}
       <div className="overflow-x-auto border border-slate-700/50 rounded-[24px] w-full scroll-smooth" style={{ WebkitOverflowScrolling: 'touch' }}>
-        <div className="rounded-[24px] bg-slate-900/40 p-4" style={{ minWidth: '640px' }}>
+        <div className="rounded-[24px] bg-slate-900/40 p-4" style={{ minWidth: '800px' }}>
 
           {/* timeline header */}
           <div className="mb-0.5 flex items-end border-b border-slate-700/50 pb-2 select-none">
-            <div className="shrink-0" style={{ width: LABEL_W + 'px' }}></div>
+            <div className={labelClass}></div>
             <div className="flex-1 relative" style={{ height: '20px' }}>
               {ticks.map((t, i) => (
                 <div key={i} className="absolute bottom-0" style={{ left: t.pct + '%', transform: 'translateX(-50%)' }}>
@@ -1141,7 +1142,7 @@ function GanttChart({ products, comments, onSaveComment }) {
                 <span className="text-xs font-bold text-sky-400 whitespace-nowrap leading-none">Today</span>
               </div>
             </div>
-            <div className="shrink-0 pl-4 text-[10px] font-extrabold uppercase tracking-[0.2em] text-slate-500" style={{ width: '220px' }}>Notes</div>
+            <div className={`pl-4 text-[10px] font-extrabold uppercase tracking-[0.2em] text-slate-500 ${notesClass}`}>Notes</div>
           </div>
 
           {/* rows — vertically scrollable */}
@@ -1168,7 +1169,7 @@ function GanttChart({ products, comments, onSaveComment }) {
               return (
                 <div key={p.id} className="gantt-row flex items-center border-b border-slate-700/50 transition-colors" style={{ minHeight: '56px' }}>
                   {/* label */}
-                  <div className="shrink-0 pr-4 overflow-visible text-right relative group cursor-default" style={{ width: LABEL_W + 'px' }}>
+                  <div className={`pr-4 overflow-visible text-right relative group cursor-default ${labelClass}`}>
                     <div className="font-mono text-[10px] font-semibold tracking-wider truncate leading-tight mb-0.5" style={{ color: ov ? '#f87171' : '#38bdf8' }}>{p.code}</div>
                     <div className="text-[13px] font-medium text-slate-100 truncate leading-tight">
                       {p.description}
@@ -1237,7 +1238,7 @@ function GanttChart({ products, comments, onSaveComment }) {
                   </div>
 
                   {/* comment area */}
-                  <div className="shrink-0 pl-4 border-l border-slate-700/30 flex items-center h-full" style={{ width: '220px' }}>
+                  <div className={`pl-4 border-l border-slate-700/30 flex items-center h-full ${notesClass}`}>
                     <GanttComment 
                        code={p.code} 
                        comment={comments ? comments[p.code] : ''} 
