@@ -1386,12 +1386,71 @@ function App() {
     catch { return {}; }
   });
 
-  const handleSaveComment = (code, text) => {
+  // Fetch comments from Supabase once session is loaded
+  useEffect(() => {
+    if (!session || !authClient) return;
+
+    let mounted = true;
+
+    async function fetchComments() {
+      try {
+        const { data, error } = await authClient
+          .from('launch_radar_comments')
+          .select('code, text');
+
+        if (!mounted) return;
+
+        if (!error && data) {
+          const fetched = data.reduce((acc, row) => ({ ...acc, [row.code]: row.text }), {});
+          setComments(fetched);
+          localStorage.setItem('launch-radar-comments', JSON.stringify(fetched));
+        } else {
+          const metaComments = session.user.user_metadata?.comments || {};
+          setComments(metaComments);
+          localStorage.setItem('launch-radar-comments', JSON.stringify(metaComments));
+        }
+      } catch (e) {
+        if (!mounted) return;
+        const metaComments = session.user.user_metadata?.comments || {};
+        setComments(metaComments);
+        localStorage.setItem('launch-radar-comments', JSON.stringify(metaComments));
+      }
+    }
+
+    fetchComments();
+
+    return () => {
+      mounted = false;
+    };
+  }, [session, authClient]);
+
+  const handleSaveComment = async (code, text) => {
+    let nextComments = {};
     setComments(prev => {
-      const next = { ...prev, [code]: text };
-      localStorage.setItem('launch-radar-comments', JSON.stringify(next));
-      return next;
+      nextComments = { ...prev, [code]: text };
+      localStorage.setItem('launch-radar-comments', JSON.stringify(nextComments));
+      return nextComments;
     });
+
+    if (authClient && session?.user) {
+      try {
+        const { error } = await authClient
+          .from('launch_radar_comments')
+          .upsert({ code, text, user_id: session.user.id }, { onConflict: 'code' });
+
+        if (error) {
+          console.warn('DB Table upsert failed, saving to user metadata instead:', error.message);
+          await authClient.auth.updateUser({
+            data: { comments: nextComments }
+          });
+        }
+      } catch (err) {
+        console.warn('DB Table upsert failed, saving to user metadata instead:', err.message);
+        await authClient.auth.updateUser({
+          data: { comments: nextComments }
+        });
+      }
+    }
   };
 
   function handleData(data, date) {
