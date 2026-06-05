@@ -1013,13 +1013,22 @@ function GanttComment({ code, comment, onSave }) {
 function GanttChart({ products, comments, onSaveComment }) {
   const [sortMode, setSortMode] = useState('urgency');
   const [search, setSearch] = useState('');
+  const [selectedPm, setSelectedPm] = useState('');
+  const [selectedDesigner, setSelectedDesigner] = useState('');
   const today = useMemo(() => sod(new Date()), []);
+
+  const uniq = useMemo(() => ({
+    pm:             [...new Set(products.map(p => p.pm).filter(Boolean))].sort(),
+    graphic:        [...new Set(products.map(p => p.graphic).filter(Boolean))].sort(),
+  }), [products]);
 
   /* pre-process items with gantt urgency */
   const items = useMemo(() => {
     const urgencyOrder = { overdue: 0, critical: 1, medium: 2, ok: 3, none: 4 };
     const arr = products
       .filter(p => {
+        if (selectedPm && p.pm !== selectedPm) return false;
+        if (selectedDesigner && p.graphic !== selectedDesigner) return false;
         if (!search) return true;
         const q = search.toLowerCase();
         const c = String(p.code || '').toLowerCase();
@@ -1100,7 +1109,7 @@ function GanttChart({ products, comments, onSaveComment }) {
             AW → Ready to Order
           </span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <input 
             type="text"
             placeholder="Search by code or title..."
@@ -1108,6 +1117,28 @@ function GanttChart({ products, comments, onSaveComment }) {
             onChange={e => setSearch(e.target.value)}
             className="w-full sm:w-64 rounded-full border border-slate-700 bg-slate-900/50 px-4 py-2 text-xs text-slate-200 focus:outline-none focus:border-sky-500 placeholder:text-slate-500 shadow-sm"
           />
+          <div className="flex items-center gap-2 rounded-full border border-slate-700 bg-slate-800/50 px-3 py-2 text-xs shadow-sm">
+            <span className="font-semibold text-slate-400">PM:</span>
+            <select
+              value={selectedPm}
+              onChange={e => setSelectedPm(e.target.value)}
+              className="rounded-full border border-slate-600 bg-slate-900 px-3 py-1 text-slate-200 cursor-pointer focus:outline-none focus:border-sky-500"
+            >
+              <option value="">All</option>
+              {uniq.pm.map(v => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </div>
+          <div className="flex items-center gap-2 rounded-full border border-slate-700 bg-slate-800/50 px-3 py-2 text-xs shadow-sm">
+            <span className="font-semibold text-slate-400">Designer:</span>
+            <select
+              value={selectedDesigner}
+              onChange={e => setSelectedDesigner(e.target.value)}
+              className="rounded-full border border-slate-600 bg-slate-900 px-3 py-1 text-slate-200 cursor-pointer focus:outline-none focus:border-sky-500"
+            >
+              <option value="">All</option>
+              {uniq.graphic.map(v => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </div>
           <div className="flex items-center gap-2 rounded-full border border-slate-700 bg-slate-800/50 px-3 py-2 text-xs shadow-sm">
             <span className="font-semibold text-slate-400">Sort by:</span>
             <select
