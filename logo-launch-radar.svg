@@ -1,0 +1,66 @@
+<svg width="960" height="360" viewBox="0 0 960 360" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="crazeGrad" x1="180" y1="20" x2="780" y2="140" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EC4899"/>
+      <stop offset="0.22" stop-color="#8B5CF6"/>
+      <stop offset="0.45" stop-color="#38BDF8"/>
+      <stop offset="0.7" stop-color="#34D399"/>
+      <stop offset="1" stop-color="#D9F99D"/>
+    </linearGradient>
+    <linearGradient id="launchGrad" x1="120" y1="175" x2="835" y2="240" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#C084FC"/>
+      <stop offset="0.22" stop-color="#60A5FA"/>
+      <stop offset="0.52" stop-color="#67E8F9"/>
+      <stop offset="0.78" stop-color="#86EFAC"/>
+      <stop offset="1" stop-color="#D9F99D"/>
+    </linearGradient>
+    <linearGradient id="rocketGrad" x1="470" y1="236" x2="520" y2="312" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FBBF24"/>
+      <stop offset="0.4" stop-color="#F97316"/>
+      <stop offset="0.72" stop-color="#F43F5E"/>
+      <stop offset="1" stop-color="#7C3AED"/>
+    </linearGradient>
+    <linearGradient id="sweepGrad" x1="480" y1="180" x2="720" y2="292" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#67E8F9" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#67E8F9" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="9" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <path d="M256 48C270 28 294 17 319 17H413C439 17 463 29 477 50L489 69H589C611 69 631 79 643 95L648 101L764 101C793 101 817 124 817 153V159H845C874 159 898 183 898 212V224C898 242 889 258 874 269C889 280 898 296 898 314V317C898 346 874 370 845 370H686C677 370 668 367 660 363L642 354C627 346 609 342 591 342H369C351 342 333 346 318 354L300 363C292 367 283 370 274 370H115C86 370 62 346 62 317V314C62 296 71 280 86 269C71 258 62 242 62 224V212C62 183 86 159 115 159H143V153C143 137 150 122 162 111L256 48Z" transform="translate(0 -20)" fill="#071120" stroke="#F8FAFC" stroke-width="16" stroke-linejoin="round"/>
+
+  <rect x="106" y="158" width="748" height="118" rx="28" fill="#081425"/>
+  <path d="M480 183C551 183 609 240 609 311H351C351 240 409 183 480 183Z" fill="#081425"/>
+  <path d="M480 183C551 183 609 240 609 311" stroke="#F8FAFC" stroke-width="16" stroke-linecap="round"/>
+  <path d="M351 311C351 240 409 183 480 183" stroke="#F8FAFC" stroke-width="16" stroke-linecap="round"/>
+
+  <text x="480" y="126" text-anchor="middle" font-family="'Space Grotesk', Arial, sans-serif" font-size="112" font-weight="700" letter-spacing="5" fill="url(#crazeGrad)" stroke="#F8FAFC" stroke-width="18" paint-order="stroke fill">CRAZE</text>
+  <text x="480" y="258" text-anchor="middle" font-family="'Space Grotesk', Arial, sans-serif" font-size="82" font-weight="700" letter-spacing="3" fill="url(#launchGrad)">LAUNCH RADAR</text>
+
+  <line x1="148" y1="187" x2="812" y2="187" stroke="url(#launchGrad)" stroke-width="7" stroke-linecap="round" opacity="0.9"/>
+
+  <path d="M480 311C480 272 448 240 409 240" stroke="#4FC3F7" stroke-width="7" stroke-linecap="round"/>
+  <path d="M480 311C480 250 430 200 369 200" stroke="#4FC3F7" stroke-width="7" stroke-linecap="round" opacity="0.82"/>
+  <path d="M480 311C480 285 501 264 527 264" stroke="#67E8F9" stroke-width="7" stroke-linecap="round"/>
+  <path d="M480 311C480 255 526 209 582 209" stroke="#67E8F9" stroke-width="7" stroke-linecap="round" opacity="0.82"/>
+  <path d="M480 311C480 235 542 173 618 173" stroke="#86EFAC" stroke-width="7" stroke-linecap="round" opacity="0.75"/>
+
+  <path d="M480 311L620 238A153 153 0 0 0 480 158V311Z" fill="url(#sweepGrad)"/>
+
+  <circle cx="397" cy="272" r="5" fill="#E0F2FE" filter="url(#glow)"/>
+  <circle cx="462" cy="246" r="5" fill="#E0F2FE" filter="url(#glow)"/>
+  <circle cx="611" cy="244" r="5" fill="#E0F2FE" filter="url(#glow)"/>
+
+  <path d="M480 227L501 249V292L480 307L459 292V249L480 227Z" fill="url(#rocketGrad)"/>
+  <path d="M480 227L491 249H469L480 227Z" fill="#FDE68A"/>
+  <circle cx="480" cy="263" r="8.5" fill="#111827"/>
+  <path d="M459 255L443 280L459 272V255Z" fill="#E11D48"/>
+  <path d="M501 255L517 280L501 272V255Z" fill="#DC2626"/>
+  <path d="M472 307H488L480 330L472 307Z" fill="#FB923C"/>
+</svg>

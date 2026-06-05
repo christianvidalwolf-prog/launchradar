@@ -9,9 +9,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="./auth-config.js"></script>
   <style>
     :root {
       --font-body: "Manrope", sans-serif;
@@ -180,6 +182,9 @@ const SC = {
   },
 };
 
+/* ── DROPBOX DATA SOURCE ── */
+const DROPBOX_PROXY_URL = '/api/dropbox';
+
 /* ── GANTT URGENCY CONFIG ── */
 const GU = {
   overdue:  { color: '#f43f5e', label: 'Overdue' },
@@ -215,6 +220,47 @@ const fmtMoney = v => (!v || v === 0) ? '—'
 const fmtLoadDate = d => d
   ? d.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })
   : '';
+
+/* ── AUTH CONFIG ── */
+const AUTH_CONFIG = window.LAUNCH_RADAR_AUTH || {};
+
+function getAuthRedirectUrl() {
+  return `${window.location.origin}${window.location.pathname}`;
+}
+
+function hasAuthConfig() {
+  return Boolean(AUTH_CONFIG.supabaseUrl && AUTH_CONFIG.supabaseAnonKey && window.supabase?.createClient);
+}
+
+function createAuthClient() {
+  if (!hasAuthConfig()) return null;
+  return window.supabase.createClient(AUTH_CONFIG.supabaseUrl, AUTH_CONFIG.supabaseAnonKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  });
+}
+
+function AppLogo({ className = '', imageClassName = '', subtitle = '' }) {
+  return (
+    <div className={`flex flex-col items-start ${className}`}>
+      <div className="rounded-[20px] border border-white/8 bg-white/[0.03] p-1.5 shadow-[0_10px_28px_rgba(0,0,0,0.18)] backdrop-blur-sm">
+        <img
+          src="./assets/launch-radar-logo.png"
+          alt="Craze Launch Radar"
+          className={`h-auto w-full max-w-[280px] rounded-[16px] opacity-95 drop-shadow-[0_8px_20px_rgba(0,0,0,0.22)] ${imageClassName}`}
+        />
+      </div>
+      {subtitle && (
+        <p className="mt-4 max-w-xl text-sm leading-6 text-slate-300 sm:text-base">
+          {subtitle}
+        </p>
+      )}
+    </div>
+  );
+}
 
 /* ── PURE STATUS ENGINE ── */
 function computeRisk(aw, rto, today) {
@@ -316,7 +362,7 @@ function KPICard({ status, count, active, onToggle }) {
 }
 
 /* ── DROP ZONE ── */
-function DropZone({ onData }) {
+function DropZone({ onData, session, onSignOut }) {
   const [dragging, setDragging] = useState(false);
   const [error,    setError]    = useState(null);
   const inputRef = useRef();
@@ -341,16 +387,27 @@ function DropZone({ onData }) {
 
       <div className="relative mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl items-center gap-8 lg:grid-cols-[1.15fr_0.85fr]">
         <div className="surface-dark rounded-[32px] px-7 py-8 text-white sm:px-10 sm:py-10">
+          {session && onSignOut && (
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+              <div className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs font-semibold text-slate-200">
+                Signed in as {session.user?.email || 'email account'}
+              </div>
+              <button
+                onClick={onSignOut}
+                className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/15"
+              >
+                Sign out
+              </button>
+            </div>
+          )}
           <div className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.28em] text-sky-300 shadow-[0_0_15px_rgba(56,189,248,0.2)]">
             Launch readiness cockpit
           </div>
-          <h1 className="mt-6 max-w-xl text-5xl font-bold tracking-[-0.06em] sm:text-6xl text-slate-100 drop-shadow-md">
-            Launch Radar
-          </h1>
-          <p className="mt-5 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-            Turn your Excel into a clear, visual, prioritised view to spot delays,
-            bottlenecks, and upcoming critical dates — all inside your browser.
-          </p>
+          <AppLogo
+            className="mt-6"
+            imageClassName="max-w-[250px]"
+            subtitle="Turn your Excel into a clear, visual, prioritised view to spot delays, bottlenecks, and upcoming critical dates, all inside your browser."
+          />
 
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
             {[
@@ -412,6 +469,273 @@ function DropZone({ onData }) {
               <div className="rounded-2xl bg-slate-800/50 border border-slate-700/50 px-4 py-3">Sheet: <span className="font-semibold text-slate-300">Items</span></div>
               <div className="rounded-2xl bg-slate-800/50 border border-slate-700/50 px-4 py-3">Private: <span className="font-semibold text-slate-300">100% local</span></div>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LoadingScreen({ title, message, error, onRetry }) {
+  return (
+    <div className="page-shell flex items-center justify-center px-5 py-8 sm:px-8 lg:px-12 lg:py-10">
+      <div className="hero-orb left-[-10rem] top-10 h-72 w-72 bg-sky-500/20"></div>
+      <div className="hero-orb right-[-6rem] top-20 h-64 w-64 bg-indigo-500/20"></div>
+      <div className="surface-dark relative w-full max-w-xl rounded-[32px] px-8 py-10 text-center text-white">
+        {error ? (
+          <>
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-500/20 border border-rose-500/30 text-2xl">⚠️</div>
+            <h1 className="mt-6 text-3xl font-bold tracking-[-0.05em]">{title || 'Failed to load'}</h1>
+            <p className="mt-3 text-sm leading-6 text-rose-400 font-mono break-all">{error}</p>
+            {onRetry && (
+              <button onClick={onRetry}
+                className="mt-6 rounded-full border border-sky-500/30 bg-sky-500/20 px-6 py-2.5 text-sm font-semibold text-sky-300 transition hover:bg-sky-500/30">
+                ↻ Try again
+              </button>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="mx-auto h-12 w-12 animate-spin rounded-full border-2 border-slate-700 border-t-sky-400"></div>
+            <h1 className="mt-6 text-3xl font-bold tracking-[-0.05em]">{title}</h1>
+            <p className="mt-3 text-sm leading-6 text-slate-300">{message}</p>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AuthSetupScreen() {
+  return (
+    <div className="page-shell px-5 py-8 sm:px-8 lg:px-12 lg:py-10">
+      <div className="hero-orb left-[-10rem] top-10 h-72 w-72 bg-sky-500/20"></div>
+      <div className="hero-orb right-[-6rem] top-20 h-64 w-64 bg-indigo-500/20"></div>
+      <div className="relative mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl items-center gap-8 lg:grid-cols-[1.15fr_0.85fr]">
+        <div className="surface-dark rounded-[32px] px-7 py-8 text-white sm:px-10 sm:py-10">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.28em] text-sky-100">
+            Email access required
+          </div>
+          <AppLogo
+            className="mt-6"
+            imageClassName="max-w-[235px]"
+            subtitle="The app is now prepared to require an account before opening. To activate it on Vercel, connect Supabase Auth and keep the URL behind email sign up or sign in."
+          />
+        </div>
+
+        <div className="surface-card rounded-[32px] p-5 sm:p-6">
+          <div className="rounded-[26px] border border-white/10 bg-slate-950/50 p-6 sm:p-7">
+            <div className="font-display text-2xl font-bold tracking-[-0.04em] text-white">Setup pending</div>
+            <p className="mt-2 text-sm leading-6 text-slate-400">
+              Fill `auth-config.js` with your Supabase project URL and publishable anon key.
+            </p>
+
+            <div className="mt-6 rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+              <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">auth-config.js</div>
+              <pre className="mt-3 overflow-auto text-xs leading-6 text-slate-300">{`window.LAUNCH_RADAR_AUTH = {
+  supabaseUrl: 'https://YOUR_PROJECT.supabase.co',
+  supabaseAnonKey: 'YOUR_PUBLISHABLE_ANON_KEY',
+  siteName: 'Launch Radar',
+};`}</pre>
+            </div>
+
+            <div className="mt-6 space-y-3 text-sm text-slate-400">
+              <p>1. Create a Supabase project and enable Email auth.</p>
+              <p>2. Add your Vercel URL as `Site URL` and `Redirect URL` in Supabase Auth settings.</p>
+              <p>3. Deploy this folder again to Vercel.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AuthScreen({ client }) {
+  const [mode, setMode] = useState('signin');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const siteName = AUTH_CONFIG.siteName || 'Launch Radar';
+
+  async function handleEmailPasswordSubmit(e) {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    setMessage('');
+
+    try {
+      if (!email.trim()) throw new Error('Enter a valid email.');
+      if (mode === 'signup' && password.length < 8) throw new Error('Use a password with at least 8 characters.');
+
+      if (mode === 'signup') {
+        const { data, error: signUpError } = await client.auth.signUp({
+          email: email.trim(),
+          password,
+          options: {
+            emailRedirectTo: getAuthRedirectUrl(),
+          },
+        });
+        if (signUpError) throw signUpError;
+
+        if (data?.session) {
+          setMessage('Account created and session started.');
+        } else {
+          setMessage('Account created. Check your email to confirm access before signing in.');
+        }
+      } else {
+        const { error: signInError } = await client.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+        if (signInError) throw signInError;
+        setMessage('Signed in successfully.');
+      }
+    } catch (err) {
+      setError(err.message || 'Unable to authenticate.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleMagicLink() {
+    setBusy(true);
+    setError('');
+    setMessage('');
+
+    try {
+      if (!email.trim()) throw new Error('Enter your email first to receive the access link.');
+      const { error: otpError } = await client.auth.signInWithOtp({
+        email: email.trim(),
+        options: {
+          emailRedirectTo: getAuthRedirectUrl(),
+        },
+      });
+      if (otpError) throw otpError;
+      setMessage('Magic link sent. Open the email and come back through the link.');
+    } catch (err) {
+      setError(err.message || 'Unable to send the magic link.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="page-shell px-5 py-8 sm:px-8 lg:px-12 lg:py-10">
+      <div className="hero-orb left-[-10rem] top-10 h-72 w-72 bg-sky-500/20"></div>
+      <div className="hero-orb right-[-6rem] top-20 h-64 w-64 bg-indigo-500/20"></div>
+      <div className="hero-orb bottom-[-8rem] left-[18%] h-72 w-72 bg-emerald-500/10"></div>
+
+      <div className="relative mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl items-center gap-8 lg:grid-cols-[1.15fr_0.85fr]">
+        <div className="surface-dark rounded-[32px] px-7 py-8 text-white sm:px-10 sm:py-10">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.28em] text-sky-100">
+            Private app access
+          </div>
+          <AppLogo
+            className="mt-6"
+            imageClassName="max-w-[235px]"
+            subtitle="To use the app on its Vercel URL, users now need to create an account or authenticate by email first."
+          />
+
+          <div className="mt-8 grid gap-4 sm:grid-cols-3">
+            {[
+              ['Secure access', 'The dashboard stays blocked until a valid session exists.'],
+              ['Email accounts', 'Create an account with email and password or use a magic link.'],
+              ['Vercel ready', 'Works on a static deployment once Supabase redirect URLs are configured.'],
+            ].map(([title, desc]) => (
+              <div key={title} className="rounded-2xl border border-white/10 bg-white/8 p-4 backdrop-blur">
+                <div className="text-sm font-bold text-white">{title}</div>
+                <div className="mt-2 text-sm leading-6 text-slate-300">{desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="surface-card rounded-[32px] p-5 sm:p-6">
+          <div className="rounded-[26px] border border-white/10 bg-slate-950/50 p-6 sm:p-7">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="font-display text-2xl font-bold tracking-[-0.04em] text-white">
+                  {mode === 'signin' ? 'Sign in' : 'Create account'}
+                </div>
+                <p className="mt-1 text-sm text-slate-400">
+                  Access is required before loading any file.
+                </p>
+              </div>
+              <div className="flex rounded-full border border-white/10 bg-white/5 p-1 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setMode('signin')}
+                  className={`rounded-full px-3 py-1.5 font-semibold transition ${mode === 'signin' ? 'bg-sky-500/20 text-sky-300' : 'text-slate-400 hover:text-slate-200'}`}
+                >
+                  Sign in
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode('signup')}
+                  className={`rounded-full px-3 py-1.5 font-semibold transition ${mode === 'signup' ? 'bg-sky-500/20 text-sky-300' : 'text-slate-400 hover:text-slate-200'}`}
+                >
+                  Create account
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleEmailPasswordSubmit} className="mt-6 space-y-4">
+              <div>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  className="fancy-input !bg-white/5 !border-white/10 !text-slate-100"
+                  placeholder="name@company.com"
+                  autoComplete="email"
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Password</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  className="fancy-input !bg-white/5 !border-white/10 !text-slate-100"
+                  placeholder={mode === 'signup' ? 'At least 8 characters' : 'Your password'}
+                  autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                />
+              </div>
+
+              {message && <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">{message}</div>}
+              {error && <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">{error}</div>}
+
+              <button
+                type="submit"
+                disabled={busy}
+                className="w-full rounded-full bg-sky-500 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {busy ? 'Please wait...' : mode === 'signin' ? 'Sign in with email' : 'Create account'}
+              </button>
+            </form>
+
+            <div className="my-5 flex items-center gap-3 text-xs text-slate-500">
+              <div className="h-px flex-1 bg-white/10"></div>
+              <span>or</span>
+              <div className="h-px flex-1 bg-white/10"></div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleMagicLink}
+              disabled={busy}
+              className="w-full rounded-full border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Send magic link by email
+            </button>
+
+            <p className="mt-4 text-xs leading-6 text-slate-500">
+              Supabase Auth stores the session in the browser, so authenticated users stay signed in on the Vercel deployment until they log out.
+            </p>
           </div>
         </div>
       </div>
@@ -760,7 +1084,7 @@ function GanttChart({ products, comments, onSaveComment }) {
   );
 
   const { pct, todayP, ticks } = chart;
-  const LABEL_W = 240;
+  const LABEL_W = 312;
 
   return (
     <div>
@@ -842,12 +1166,20 @@ function GanttChart({ products, comments, onSaveComment }) {
               }
 
               return (
-                <div key={p.id} className="gantt-row flex items-center border-b border-slate-700/50 transition-colors" style={{ height: '38px' }}>
+                <div key={p.id} className="gantt-row flex items-center border-b border-slate-700/50 transition-colors" style={{ minHeight: '56px' }}>
                   {/* label */}
                   <div className="shrink-0 pr-4 overflow-visible text-right relative group cursor-default" style={{ width: LABEL_W + 'px' }}>
                     <div className="font-mono text-[10px] font-semibold tracking-wider truncate leading-tight mb-0.5" style={{ color: ov ? '#f87171' : '#38bdf8' }}>{p.code}</div>
                     <div className="text-[13px] font-medium text-slate-100 truncate leading-tight">
                       {p.description}
+                    </div>
+                    <div className="mt-1 flex justify-end gap-1.5 text-[10px] leading-tight text-slate-400">
+                      <span className="max-w-[130px] truncate rounded-full border border-white/8 bg-white/[0.03] px-2 py-0.5" title={`PM: ${p.pm || 'Unassigned'}`}>
+                        PM: {p.pm || '—'}
+                      </span>
+                      <span className="max-w-[130px] truncate rounded-full border border-white/8 bg-white/[0.03] px-2 py-0.5" title={`Designer: ${p.graphic || 'Unassigned'}`}>
+                        Designer: {p.graphic || '—'}
+                      </span>
                     </div>
                     {/* tooltip */}
                     {p.description && p.description.length > 30 && (
@@ -858,21 +1190,21 @@ function GanttChart({ products, comments, onSaveComment }) {
                   </div>
 
                   {/* bar area */}
-                  <div className="flex-1 relative" style={{ height: '38px' }}>
+                  <div className="flex-1 relative" style={{ height: '56px' }}>
                     {/* track */}
-                    <div className="absolute rounded-full bg-slate-800/80 border border-slate-700" style={{ top: '16px', bottom: '16px', left: 0, right: 0 }} />
+                    <div className="absolute rounded-full bg-slate-800/80 border border-slate-700" style={{ top: '25px', bottom: '25px', left: 0, right: 0 }} />
 
                     {/* today line */}
                     <div className="absolute inset-y-0 z-10" style={{ left: todayP + '%', borderLeft: '2px dashed rgba(56,189,248,0.5)', width: 0 }} />
 
                     {/* bar 1 */}
                     {b1L !== null && b1W > 0 && (
-                      <div className="absolute rounded-sm" style={{ top: '13px', bottom: '13px', left: b1L + '%', width: b1W + '%', background: uc.color }} />
+                      <div className="absolute rounded-sm" style={{ top: '22px', bottom: '22px', left: b1L + '%', width: b1W + '%', background: uc.color }} />
                     )}
 
                     {/* bar 2 */}
                     {b2L !== null && b2W > 0 && (
-                      <div className="absolute rounded-sm" style={{ top: '15px', bottom: '15px', left: b2L + '%', width: b2W + '%', background: '#475569' }} />
+                      <div className="absolute rounded-sm" style={{ top: '24px', bottom: '24px', left: b2L + '%', width: b2W + '%', background: '#475569' }} />
                     )}
 
                     {/* AW deadline diamond */}
@@ -981,6 +1313,9 @@ function DesignerWorkload({ products }) {
 
 /* ── APP ── */
 function App() {
+  const authClient = useMemo(() => createAuthClient(), []);
+  const [authLoading, setAuthLoading] = useState(Boolean(authClient));
+  const [session, setSession] = useState(null);
   const [products,     setProducts]     = useState(null);
   const [loadDate,     setLoadDate]     = useState(null);
   const [activeStatus, setActiveStatus] = useState(null);
@@ -991,6 +1326,30 @@ function App() {
   
   const [cf, setCf] = useState(EMPTY_CF);
   const [sort, setSort] = useState({ col: null, dir: 'asc' });
+  const [dataLoading, setDataLoading] = useState(false);
+  const [dataError,   setDataError]   = useState(null);
+
+  async function loadFromDropbox() {
+    setDataLoading(true);
+    setDataError(null);
+    try {
+      const res = await fetch(DROPBOX_PROXY_URL, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status} — ${res.statusText}`);
+      const buf = await res.arrayBuffer();
+      const data = parseXLSX(buf);
+      setProducts(data);
+      setLoadDate(new Date());
+      setSelected(null);
+      setActiveStatus(null);
+      setCf(EMPTY_CF);
+      setSort({ col: null, dir: 'asc' });
+      setActiveTab('table');
+    } catch (err) {
+      setDataError(err.message || 'Failed to load data from Dropbox');
+    } finally {
+      setDataLoading(false);
+    }
+  }
 
   // Custom comments
   const [comments, setComments] = useState(() => {
@@ -1009,6 +1368,49 @@ function App() {
   function handleData(data, date) {
     setProducts(data); setLoadDate(date); setSelected(null); setActiveStatus(null);
     setCf(EMPTY_CF); setSort({ col: null, dir: 'asc' });
+    setActiveTab('table');
+  }
+
+  useEffect(() => {
+    if (!authClient) return;
+
+    let mounted = true;
+
+    authClient.auth.getSession().then(({ data, error }) => {
+      if (!mounted) return;
+      if (error) console.error('Auth session error:', error.message);
+      setSession(data?.session ?? null);
+      setAuthLoading(false);
+    });
+
+    const { data: listener } = authClient.auth.onAuthStateChange((_event, nextSession) => {
+      if (!mounted) return;
+      setSession(nextSession ?? null);
+      setAuthLoading(false);
+    });
+
+    return () => {
+      mounted = false;
+      listener?.subscription?.unsubscribe?.();
+    };
+  }, [authClient]);
+
+  // Auto-load from Dropbox once session is established
+  useEffect(() => {
+    if (session && !products && !dataLoading) {
+      loadFromDropbox();
+    }
+  }, [session]);
+
+  async function handleSignOut() {
+    if (!authClient) return;
+    await authClient.auth.signOut({ scope: 'local' });
+    setProducts(null);
+    setLoadDate(null);
+    setSelected(null);
+    setActiveStatus(null);
+    setCf(EMPTY_CF);
+    setSort({ col: null, dir: 'asc' });
     setActiveTab('table');
   }
 
@@ -1054,7 +1456,11 @@ function App() {
     });
   }, [filteredProducts, sort]);
 
-  if (!products) return <DropZone onData={handleData} />;
+  if (!authClient) return <AuthSetupScreen />;
+  if (authLoading) return <LoadingScreen title="Checking access" message="Verifying the active session before opening the app." />;
+  if (!session) return <AuthScreen client={authClient} />;
+  if (dataLoading) return <LoadingScreen title="Loading data" message="Fetching your latest launch report from Dropbox…" />;
+  if (dataError || !products) return <LoadingScreen title="Could not load data" error={dataError || 'No data available.'} onRetry={loadFromDropbox} />;
 
   return (
     <div className="page-shell px-4 py-4 sm:px-6 lg:px-8 lg:py-6 text-slate-200">
@@ -1068,28 +1474,34 @@ function App() {
         <div className="surface-dark rounded-[30px] px-5 py-5 text-white sm:px-7 sm:py-6 shadow-[0_0_40px_rgba(14,165,233,0.05)] border border-white/5">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div className="flex items-start gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-[20px] bg-white/5 border border-white/10 text-2xl shadow-lg backdrop-blur">
-                ↗
-              </div>
               <div>
                 <div className="inline-flex items-center gap-2 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-sky-300">
                   Operations Dashboard
                 </div>
-                <h1 className="mt-3 text-3xl font-bold tracking-[-0.06em] sm:text-4xl text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">Launch Radar</h1>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400 sm:text-base">
-                  Executive view to prioritise delayed products, detect risks, and track key dates with much clearer visibility.
-                </p>
+                <AppLogo
+                  className="mt-4"
+                  imageClassName="max-w-[215px]"
+                  subtitle="Executive view to prioritise delayed products, detect risks, and track key dates with much clearer visibility."
+                />
               </div>
             </div>
 
             <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
               <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200 backdrop-blur">
+                <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">Authenticated as</div>
+                <div className="mt-1 font-semibold text-white">{session?.user?.email || 'Email account'}</div>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200 backdrop-blur">
                 <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">Current load</div>
                 <div className="mt-1 font-semibold text-white">{products.length} products{loadDate && <> · {fmtLoadDate(loadDate)}</>}</div>
               </div>
-              <button onClick={() => { setProducts(null); setLoadDate(null); }}
-                className="rounded-full border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm font-semibold text-rose-300 transition hover:bg-rose-500/20 hover:border-rose-500/50">
-                Load another file
+              <button onClick={loadFromDropbox} disabled={dataLoading}
+                className="rounded-full border border-sky-500/30 bg-sky-500/10 px-4 py-2.5 text-sm font-semibold text-sky-300 transition hover:bg-sky-500/20 hover:border-sky-500/50 disabled:opacity-50 disabled:cursor-not-allowed">
+                {dataLoading ? '⏳ Loading…' : '↻ Refresh data'}
+              </button>
+              <button onClick={handleSignOut}
+                className="rounded-full border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 transition hover:bg-white/10">
+                Sign out
               </button>
             </div>
           </div>
