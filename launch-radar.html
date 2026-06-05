@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Launch Radar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    :root {
+      --font-body: "Manrope", sans-serif;
+      --font-display: "Space Grotesk", sans-serif;
+      --line-soft: rgba(255, 255, 255, 0.08);
+      --line-strong: rgba(255, 255, 255, 0.16);
+      --surface: rgba(15, 23, 42, 0.6);
+      --surface-strong: rgba(15, 23, 42, 0.9);
+      --ink: #f8fafc;
+      --muted: #94a3b8;
+    }
+
+    * { box-sizing: border-box; }
+    html { background: #020617; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font-body);
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(56, 189, 248, 0.15), transparent 28%),
+        radial-gradient(circle at 85% 12%, rgba(99, 102, 241, 0.15), transparent 18%),
+        radial-gradient(circle at 20% 100%, rgba(168, 85, 247, 0.15), transparent 25%),
+        linear-gradient(180deg, #020617 0%, #0f172a 100%);
+    }
+    h1, h2, h3, .font-display { font-family: var(--font-display); }
+    #root { min-height: 100vh; }
+
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 999px;
+      border: 2px solid transparent;
+      background-clip: padding-box;
+    }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.25); }
+
+    .page-shell {
+      position: relative;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    .hero-orb {
+      position: absolute;
+      border-radius: 999px;
+      filter: blur(80px);
+      opacity: 0.35;
+      pointer-events: none;
+    }
+    .surface-card {
+      background: var(--surface);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow:
+        0 24px 80px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+    }
+    .surface-dark {
+      background:
+        radial-gradient(circle at top right, rgba(56, 189, 248, 0.15), transparent 25%),
+        linear-gradient(135deg, rgba(2, 6, 23, 0.8), rgba(15, 23, 42, 0.8) 55%, rgba(30, 58, 138, 0.4));
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 28px 90px rgba(0, 0, 0, 0.5);
+    }
+    .soft-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--line-strong), transparent);
+    }
+    .fancy-input {
+      width: 100%;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      padding: 0.55rem 0.8rem;
+      font-size: 0.76rem;
+      color: #f8fafc;
+      transition: border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
+    }
+    .fancy-input::placeholder { color: #64748b; }
+    .fancy-input:focus {
+      outline: none;
+      background: rgba(30, 41, 59, 0.8);
+      border-color: rgba(56, 189, 248, 0.6);
+      box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.15);
+    }
+    .row-selected {
+      outline: 2px solid rgba(56, 189, 248, 0.6);
+      outline-offset: -2px;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      background: rgba(56, 189, 248, 0.1) !important;
+    }
+    th.sortable:hover { background-color: rgba(255, 255, 255, 0.05); }
+    .gantt-row:hover { background: rgba(255, 255, 255, 0.03); }
+    .data-grid thead tr:first-child th {
+      position: sticky;
+      top: 0;
+      z-index: 12;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(18px);
+    }
+    .data-grid thead tr:nth-child(2) td {
+      position: sticky;
+      top: 41px;
+      z-index: 11;
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(18px);
+    }
+    .data-grid tbody tr:last-child td { border-bottom: 0; }
+    .metric-glow {
+      position: absolute;
+      inset: auto 18px 12px;
+      height: 16px;
+      border-radius: 999px;
+      filter: blur(20px);
+      opacity: 0.4;
+    }
+    .upload-grid {
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+  </style>
+</head>
+<body class="antialiased">
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useMemo, useRef, useEffect } = React;
+
+/* ── STATUS CONFIG ── */
+const SC = {
+  RETRASADO: {
+    label: 'Overdue', order: 0,
+    chip: 'border border-rose-500/50 bg-rose-500/10 text-rose-400',
+    row: 'bg-slate-900/40 hover:bg-rose-500/10',
+    kpiBg: 'bg-rose-950/40', kpiBorder: 'border-rose-500/30', kpiText: 'text-rose-400',
+    panel: 'from-rose-500/20 via-rose-950/40 to-slate-900/60', glow: 'bg-rose-500',
+    bar: 'bg-rose-500', icon: '●',
+  },
+  EN_RIESGO: {
+    label: 'At Risk', order: 1,
+    chip: 'border border-amber-500/50 bg-amber-500/10 text-amber-400',
+    row: 'bg-slate-900/40 hover:bg-amber-500/10',
+    kpiBg: 'bg-amber-950/40', kpiBorder: 'border-amber-500/30', kpiText: 'text-amber-400',
+    panel: 'from-amber-500/20 via-amber-950/40 to-slate-900/60', glow: 'bg-amber-400',
+    bar: 'bg-amber-400', icon: '●',
+  },
+  A_TIEMPO: {
+    label: 'On Track', order: 2,
+    chip: 'border border-emerald-500/50 bg-emerald-500/10 text-emerald-400',
+    row: 'bg-slate-900/40 hover:bg-emerald-500/10',
+    kpiBg: 'bg-emerald-950/40', kpiBorder: 'border-emerald-500/30', kpiText: 'text-emerald-400',
+    panel: 'from-emerald-500/20 via-emerald-950/40 to-slate-900/60', glow: 'bg-emerald-400',
+    bar: 'bg-emerald-400', icon: '●',
+  },
+  SIN_PLANIFICAR: {
+    label: 'Unplanned', order: 3,
+    chip: 'border border-slate-600/50 bg-slate-800/40 text-slate-400',
+    row: 'bg-slate-900/40 hover:bg-slate-800/60',
+    kpiBg: 'bg-slate-800/30', kpiBorder: 'border-slate-700/50', kpiText: 'text-slate-400',
+    panel: 'from-slate-700/20 via-slate-800/40 to-slate-900/60', glow: 'bg-slate-500',
+    bar: 'bg-slate-500', icon: '●',
+  },
+};
+
+/* ── GANTT URGENCY CONFIG ── */
+const GU = {
+  overdue:  { color: '#f43f5e', label: 'Overdue' },
+  critical: { color: '#fb923c', label: 'Critical (<20d)' },
+  medium:   { color: '#fcd34d', label: 'Medium (20-40d)' },
+  ok:       { color: '#34d399', label: 'OK (>40d)' },
+  none:     { color: '#64748b', label: 'No AW Deadline' },
+};
+
+/* ── UTILITIES ── */
+const sod = d => { const c = new Date(d); c.setHours(0,0,0,0); return c; };
+
+function parseExcelDate(v) {
+  if (v == null || v === '') return null;
+  if (v instanceof Date) return isNaN(v) ? null : v;
+  if (typeof v === 'number' && v > 1) {
+    const d = new Date(Math.round((v - 25569) * 86400000));
+    return isNaN(d) ? null : d;
+  }
+  if (typeof v === 'string' && v.trim()) {
+    const d = new Date(v.trim());
+    return isNaN(d) ? null : d;
+  }
+  return null;
+}
+
+const fmtDate = d => !d ? '—'
+  : d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+const fmtMoney = v => (!v || v === 0) ? '—'
+  : v.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+
+const fmtLoadDate = d => d
+  ? d.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })
+  : '';
+
+/* ── PURE STATUS ENGINE ── */
+function computeRisk(aw, rto, today) {
+  const t = sod(today);
+  const dates = [aw, rto].filter(Boolean).map(sod);
+  if (!dates.length) return { status: 'SIN_PLANIFICAR', daysOverdue: 0 };
+
+  let oldest = null, atRisk = false;
+  for (const d of dates) {
+    if (d < t) { if (!oldest || d < oldest) oldest = d; }
+    else if (Math.ceil((d - t) / 86400000) <= 14) atRisk = true;
+  }
+
+  if (oldest) return { status: 'RETRASADO', daysOverdue: Math.ceil((t - oldest) / 86400000) };
+  if (atRisk)  return { status: 'EN_RIESGO',  daysOverdue: 0 };
+  return { status: 'A_TIEMPO', daysOverdue: 0 };
+}
+
+/* ── XLSX PARSER ── */
+function parseXLSX(buf) {
+  const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+  const sn  = wb.SheetNames.find(n => /^items$/i.test(n.trim())) ?? wb.SheetNames[0];
+  const ws  = wb.Sheets[sn];
+  if (!ws) throw new Error('Sheet "Items" not found in the file');
+
+  const rows  = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true });
+  const today = new Date();
+
+  return rows.slice(1)
+    .filter(r => r[0] != null && String(r[0]).trim())
+    .map((r, i) => {
+      const aw  = parseExcelDate(r[7]);
+      const rto = parseExcelDate(r[9]);
+      const unitPrice = +r[3] || 0;
+      const { status, daysOverdue } = computeRisk(aw, rto, today);
+      return {
+        id: i,
+        code:           String(r[0]  ?? '').trim(),
+        description:    String(r[1]  ?? '').trim(),
+        fob:            +r[2] || 0,
+        unitPrice,
+        pm:             String(r[4]  ?? '').trim(),
+        statusPM:       String(r[5]  ?? '').trim(),
+        awDeadline:     aw,
+        readyToOrder:   rto,
+        approvalStatus: String(r[10] ?? '').trim(),
+        graphic:        String(r[11] ?? '').trim(),
+        riskStatus:     status,
+        daysOverdue,
+      };
+    })
+    .sort((a, b) =>
+      (SC[a.riskStatus].order - SC[b.riskStatus].order) ||
+      (b.daysOverdue - a.daysOverdue)                   ||
+      (b.unitPrice   - a.unitPrice)
+    );
+}
+
+/* ── CHIP ── */
+function Chip({ status }) {
+  const c = SC[status];
+  return (
+    <span className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-bold whitespace-nowrap shadow-sm ${c.chip}`}>
+      {c.label}
+    </span>
+  );
+}
+
+/* ── KPI CARD ── */
+function KPICard({ status, count, active, onToggle }) {
+  const c = SC[status];
+  return (
+    <button onClick={onToggle}
+      className={`relative flex min-w-[170px] flex-1 flex-col items-start gap-3 overflow-hidden rounded-[24px] border px-5 py-5 text-left transition-all duration-200 cursor-pointer select-none
+        ${active
+          ? `${c.kpiBg} ${c.kpiBorder} shadow-lg -translate-y-0.5`
+          : 'surface-card border-white/10 hover:-translate-y-0.5 hover:border-slate-600/50 hover:shadow-lg'}`}
+    >
+      <div className={`metric-glow ${c.glow}`}></div>
+      <div className="relative flex w-full items-start justify-between gap-3">
+        <div>
+          <div className={`text-[11px] font-extrabold uppercase tracking-[0.24em] ${active ? c.kpiText : 'text-slate-400'}`}>
+            {c.label}
+          </div>
+          <div className={`mt-2 text-4xl font-extrabold tabular-nums leading-none ${active ? c.kpiText : 'text-slate-100'}`}>
+            {count}
+          </div>
+        </div>
+        <span className={`mt-1 text-lg ${active ? c.kpiText : 'text-slate-500'}`}>{c.icon}</span>
+      </div>
+      <div className="relative flex w-full items-center justify-between">
+        <span className={`text-xs font-medium ${active ? c.kpiText : 'text-slate-500'}`}>
+          {active ? 'Filter active' : 'Click to filter'}
+        </span>
+        <span className={`h-2.5 w-16 rounded-full ${c.bar}`}></span>
+      </div>
+    </button>
+  );
+}
+
+/* ── DROP ZONE ── */
+function DropZone({ onData }) {
+  const [dragging, setDragging] = useState(false);
+  const [error,    setError]    = useState(null);
+  const inputRef = useRef();
+
+  function handleFile(file) {
+    if (!file) return;
+    if (!/\.xlsx$/i.test(file.name)) { setError('Only .xlsx files are accepted'); return; }
+    setError(null);
+    const reader = new FileReader();
+    reader.onload = e => {
+      try { onData(parseXLSX(e.target.result), new Date()); }
+      catch (err) { setError(err.message); }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  return (
+    <div className="page-shell px-5 py-8 sm:px-8 lg:px-12 lg:py-10">
+      <div className="hero-orb left-[-10rem] top-10 h-72 w-72 bg-sky-500"></div>
+      <div className="hero-orb right-[-6rem] top-20 h-64 w-64 bg-indigo-600"></div>
+      <div className="hero-orb bottom-[-8rem] left-[18%] h-72 w-72 bg-cyan-500"></div>
+
+      <div className="relative mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl items-center gap-8 lg:grid-cols-[1.15fr_0.85fr]">
+        <div className="surface-dark rounded-[32px] px-7 py-8 text-white sm:px-10 sm:py-10">
+          <div className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.28em] text-sky-300 shadow-[0_0_15px_rgba(56,189,248,0.2)]">
+            Launch readiness cockpit
+          </div>
+          <h1 className="mt-6 max-w-xl text-5xl font-bold tracking-[-0.06em] sm:text-6xl text-slate-100 drop-shadow-md">
+            Launch Radar
+          </h1>
+          <p className="mt-5 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
+            Turn your Excel into a clear, visual, prioritised view to spot delays,
+            bottlenecks, and upcoming critical dates — all inside your browser.
+          </p>
+
+          <div className="mt-8 grid gap-4 sm:grid-cols-3">
+            {[
+              ['Clear Radar', 'KPIs, filters, and visual signals easy to read at a glance'],
+              ['No backend', 'Everything processed in memory on your device'],
+              ['Ready in seconds', 'Drag the file and start reviewing immediately'],
+            ].map(([title, desc]) => (
+              <div key={title} className="rounded-2xl border border-white/10 bg-slate-900/40 p-4 backdrop-blur">
+                <div className="text-sm font-bold text-slate-200">{title}</div>
+                <div className="mt-2 text-sm leading-6 text-slate-400">{desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="surface-card upload-grid rounded-[32px] p-5 sm:p-6">
+          <div className="rounded-[26px] border border-white/10 bg-slate-900/60 p-6 shadow-[0_18px_60px_rgba(0,0,0,0.5)] sm:p-7 backdrop-blur-md">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/20 border border-indigo-500/30 text-xl text-indigo-400 shadow-[0_0_20px_rgba(99,102,241,0.2)]">
+                ↗
+              </div>
+              <div>
+                <div className="font-display text-2xl font-bold tracking-[-0.04em] text-slate-100">Upload your report</div>
+                <p className="mt-1 text-sm text-slate-400">Excel file in `.xlsx` format with an `Items` sheet.</p>
+              </div>
+            </div>
+
+            <div
+              onDragOver={e => { e.preventDefault(); setDragging(true); }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={e => { e.preventDefault(); setDragging(false); handleFile(e.dataTransfer.files[0]); }}
+              onClick={() => inputRef.current.click()}
+              className={`mt-6 rounded-[28px] border-2 border-dashed p-10 text-center transition-all duration-300 cursor-pointer
+                ${dragging
+                  ? 'border-sky-400 bg-sky-900/20 shadow-[0_0_40px_rgba(56,189,248,0.2)] scale-[1.01]'
+                  : 'border-slate-700 bg-slate-900/40 hover:border-sky-400/50 hover:bg-sky-900/10 hover:shadow-[0_0_30px_rgba(56,189,248,0.1)]'}`}
+            >
+              <input ref={inputRef} type="file" accept=".xlsx" className="hidden"
+                onChange={e => handleFile(e.target.files[0])} />
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[22px] bg-slate-800 border border-slate-700 text-2xl text-slate-300 shadow-lg shadow-black/50">
+                {dragging ? '↓' : '↑'}
+              </div>
+              <p className="mt-5 text-xl font-bold tracking-[-0.03em] text-slate-200">Drag your Excel here</p>
+              <p className="mt-2 text-sm leading-6 text-slate-400">or click to select it from your device</p>
+              <div className="mt-6 inline-flex items-center gap-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 text-xs font-semibold text-emerald-400">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.8)]"></span>
+                Local &amp; private processing
+              </div>
+            </div>
+
+            {error && (
+              <div className="mt-4 flex items-center gap-2 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.1)]">
+                <span>⚠️</span><span>{error}</span>
+              </div>
+            )}
+
+            <div className="mt-6 grid gap-3 text-xs text-slate-400 sm:grid-cols-3">
+              <div className="rounded-2xl bg-slate-800/50 border border-slate-700/50 px-4 py-3">Format: <span className="font-semibold text-slate-300">.xlsx</span></div>
+              <div className="rounded-2xl bg-slate-800/50 border border-slate-700/50 px-4 py-3">Sheet: <span className="font-semibold text-slate-300">Items</span></div>
+              <div className="rounded-2xl bg-slate-800/50 border border-slate-700/50 px-4 py-3">Private: <span className="font-semibold text-slate-300">100% local</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── APPROVAL BADGE ── */
+function ApprovalBadge({ v }) {
+  const cls = v === 'Approved' ? 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+    : v === 'Open'    ? 'border border-sky-500/30 bg-sky-500/10 text-sky-400'
+    : v === 'Created' ? 'border border-slate-600/50 bg-slate-800/40 text-slate-400'
+    : 'border border-transparent text-slate-500';
+  return (
+    <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${cls}`}>{v || '—'}</span>
+  );
+}
+
+/* ── EMPTY CF STATE ── */
+const EMPTY_CF = { code:'', description:'', pm:'', graphic:'', awDeadline:'', readyToOrder:'', riskStatus:'', daysOverdueMin:'', approvalStatus:'' };
+
+function matchDate(dateVal, filter, now) {
+  if (!filter) return true;
+  if (filter === 'empty') return !dateVal;
+  if (!dateVal) return false;
+  const d = sod(dateVal), days = Math.ceil((d - now) / 86400000);
+  if (filter === 'overdue')  return d < now;
+  if (filter === 'upcoming') return d >= now && days <= 14;
+  if (filter === 'future')   return days > 14;
+  return true;
+}
+
+/* ── PRODUCT TABLE ── */
+function ProductTable({ products, selected, onSelect, cf, setCf, sort, setSort, sortedProducts }) {
+  const now = useMemo(() => sod(new Date()), []);
+  const uniq = useMemo(() => ({
+    pm:             [...new Set(products.map(p => p.pm).filter(Boolean))].sort(),
+    graphic:        [...new Set(products.map(p => p.graphic).filter(Boolean))].sort(),
+    approvalStatus: [...new Set(products.map(p => p.approvalStatus).filter(Boolean))].sort(),
+  }), [products]);
+
+  const toggleSort = col => setSort(s =>
+    s.col === col
+      ? s.dir === 'asc' ? { col, dir: 'desc' } : { col: null, dir: 'asc' }
+      : { col, dir: 'asc' }
+  );
+  const set1 = (k, v) => setCf(f => ({ ...f, [k]: v }));
+  const isDirty = Object.values(cf).some(v => v !== '');
+  const ic = "fancy-input";
+
+  function SI({ col }) {
+    if (sort.col !== col) return <span className="ml-1 text-slate-300 text-xs">⇅</span>;
+    return <span className="ml-1 text-indigo-500 text-xs font-bold">{sort.dir === 'asc' ? '↑' : '↓'}</span>;
+  }
+  function TH({ col, children }) {
+    return (
+      <th onClick={() => toggleSort(col)}
+        className="sortable whitespace-nowrap px-3 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.2em] text-slate-500 cursor-pointer select-none transition-colors">
+        {children}<SI col={col} />
+      </th>
+    );
+  }
+  function DateSel({ k }) {
+    return (
+      <select className={ic} value={cf[k]} onChange={e => set1(k, e.target.value)}>
+        <option value="">All</option>
+        <option value="overdue">Overdue</option>
+        <option value="upcoming">Next 14d</option>
+        <option value="future">Future (&gt;14d)</option>
+        <option value="empty">No date</option>
+      </select>
+    );
+  }
+
+  return (
+    <div className="surface-card overflow-hidden rounded-[28px] border border-white/10">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700/50 bg-slate-900/40 px-4 py-3">
+        <div>
+          <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-400">Product List</div>
+          <span className="mt-1 block text-sm font-medium tabular-nums text-slate-300">{sortedProducts.length} of {products.length} products visible</span>
+        </div>
+        {isDirty && (
+          <button onClick={() => setCf(EMPTY_CF)} className="rounded-full border border-slate-600 bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:border-slate-400 hover:text-white">
+            Clear filters
+          </button>
+        )}
+      </div>
+      <div className="overflow-auto">
+        <table className="data-grid w-full border-collapse text-sm">
+          <thead>
+            <tr className="border-b border-slate-700">
+              <TH col="code">Code</TH>
+              <TH col="description">Description</TH>
+              <TH col="pm">PM</TH>
+              <TH col="graphic">Designer</TH>
+              <TH col="awDeadline">AW Deadline</TH>
+              <TH col="readyToOrder">Ready to Order</TH>
+              <TH col="riskStatus">Status</TH>
+              <TH col="daysOverdue">Days late</TH>
+              <TH col="approvalStatus">Approval</TH>
+            </tr>
+            <tr className="border-b border-slate-700/80">
+              <td className="px-2 py-2"><input className={ic} placeholder="Filter…" value={cf.code} onChange={e => set1('code', e.target.value)} /></td>
+              <td className="px-2 py-2"><input className={ic} placeholder="Filter…" value={cf.description} onChange={e => set1('description', e.target.value)} /></td>
+              <td className="px-2 py-2">
+                <select className={ic} value={cf.pm} onChange={e => set1('pm', e.target.value)}>
+                  <option value="">All</option>
+                  {uniq.pm.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+              </td>
+              <td className="px-2 py-2">
+                <select className={ic} value={cf.graphic} onChange={e => set1('graphic', e.target.value)}>
+                  <option value="">All</option>
+                  {uniq.graphic.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+              </td>
+              <td className="px-2 py-2"><DateSel k="awDeadline" /></td>
+              <td className="px-2 py-2"><DateSel k="readyToOrder" /></td>
+              <td className="px-2 py-2">
+                <select className={ic} value={cf.riskStatus} onChange={e => set1('riskStatus', e.target.value)}>
+                  <option value="">All</option>
+                  {Object.entries(SC).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                </select>
+              </td>
+              <td className="px-2 py-2">
+                <input className={ic} type="number" min="0" placeholder="≥ days" value={cf.daysOverdueMin} onChange={e => set1('daysOverdueMin', e.target.value)} />
+              </td>
+              <td className="px-2 py-2">
+                <select className={ic} value={cf.approvalStatus} onChange={e => set1('approvalStatus', e.target.value)}>
+                  <option value="">All</option>
+                  {uniq.approvalStatus.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+              </td>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedProducts.length === 0 ? (
+              <tr><td colSpan={9} className="py-16 text-center text-sm text-slate-400">No products match the applied filters.</td></tr>
+            ) : sortedProducts.map(p => {
+              const c = SC[p.riskStatus], isSel = selected?.id === p.id;
+              const awOver = p.awDeadline && sod(p.awDeadline) < now;
+              const rtoOver = p.readyToOrder && sod(p.readyToOrder) < now;
+              return (
+                <tr key={p.id} onClick={() => onSelect(isSel ? null : p)}
+                  className={`cursor-pointer border-b border-slate-700/50 transition-colors last:border-0 ${isSel ? 'row-selected' : c.row}`}>
+                  <td className="whitespace-nowrap px-3 py-3 font-mono text-xs font-semibold text-slate-400">{p.code}</td>
+                  <td className="max-w-[240px] px-3 py-3 text-slate-200"><div className="truncate font-medium" title={p.description}>{p.description || '—'}</div></td>
+                  <td className="whitespace-nowrap px-3 py-3 text-slate-300">{p.pm || '—'}</td>
+                  <td className="whitespace-nowrap px-3 py-3 text-slate-300">{p.graphic || '—'}</td>
+                  <td className={`whitespace-nowrap px-3 py-3 font-mono text-xs ${awOver ? 'font-bold text-rose-400' : 'text-slate-400'}`}>{fmtDate(p.awDeadline)}</td>
+                  <td className={`whitespace-nowrap px-3 py-3 font-mono text-xs ${rtoOver ? 'font-bold text-rose-400' : 'text-slate-400'}`}>{fmtDate(p.readyToOrder)}</td>
+                  <td className="px-3 py-3"><Chip status={p.riskStatus} /></td>
+                  <td className="px-3 py-3 text-center">
+                    {p.daysOverdue > 0 ? <span className="font-bold text-rose-400 tabular-nums">{p.daysOverdue}d</span> : <span className="text-slate-500">—</span>}
+                  </td>
+                  <td className="px-3 py-3"><ApprovalBadge v={p.approvalStatus} /></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* ── SIDE PANEL ── */
+function SidePanel({ product, onClose, comment, onSaveComment }) {
+  const c = SC[product.riskStatus];
+  const [editMode, setEditMode] = useState(false);
+  const [draft, setDraft] = useState(comment || '');
+
+  useEffect(() => {
+    setDraft(comment || '');
+    setEditMode(false);
+  }, [product.code, comment]);
+
+  const handleSave = () => {
+    onSaveComment(draft);
+    setEditMode(false);
+  };
+
+  return (
+    <div className="surface-card flex w-80 shrink-0 flex-col overflow-hidden rounded-[28px] border border-white/10">
+      <div className={`bg-gradient-to-br p-5 border-b border-white/10 ${c.kpiBg} ${c.panel}`}>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="mb-1 font-mono text-xs text-slate-300">{product.code}</div>
+            <div className="text-base font-bold leading-snug text-slate-100">{product.description || '—'}</div>
+          </div>
+          <button onClick={onClose} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-slate-300 transition hover:bg-white/20 hover:text-white">✕</button>
+        </div>
+        <div className="mt-4 flex items-center gap-2 flex-wrap">
+          <Chip status={product.riskStatus} />
+          {product.daysOverdue > 0 && <span className="text-xs font-semibold text-rose-400">{product.daysOverdue} day{product.daysOverdue !== 1 ? 's' : ''} overdue</span>}
+        </div>
+      </div>
+      <div className="flex-1 space-y-4 overflow-y-auto p-5 text-sm">
+        {[['PM', product.pm||'—'],['Designer',product.graphic||'—'],['AW Deadline',fmtDate(product.awDeadline)],['Ready to Order',fmtDate(product.readyToOrder)],['Approval',product.approvalStatus||'—'],['Unit Price',fmtMoney(product.unitPrice)],['FOB',fmtMoney(product.fob)]].map(([l,v]) => (
+          <div key={l} className="rounded-2xl bg-slate-800/40 px-4 py-3 border border-white/5">
+            <div className="mb-1 text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-400">{l}</div>
+            <div className="font-medium text-slate-200">{v}</div>
+          </div>
+        ))}
+        <div className="soft-divider"></div>
+        <div>
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-400">Custom Notes</span>
+            {!editMode && <button onClick={() => setEditMode(true)} className="text-[10px] text-sky-400 hover:text-sky-300 uppercase tracking-widest font-bold">Edit</button>}
+          </div>
+          {editMode ? (
+            <div className="space-y-2">
+              <textarea 
+                value={draft}
+                onChange={e => setDraft(e.target.value)}
+                className="w-full h-24 rounded-xl border border-sky-500/30 bg-slate-900/50 p-3 text-xs text-slate-200 focus:outline-none focus:border-sky-500"
+                placeholder="Write a comment..."
+              />
+              <div className="flex gap-2 justify-end">
+                <button onClick={() => setEditMode(false)} className="text-xs font-bold text-slate-400 hover:text-slate-300 px-2 py-1">Cancel</button>
+                <button onClick={handleSave} className="text-xs font-bold bg-sky-500/20 text-sky-300 px-3 py-1.5 rounded-lg hover:bg-sky-500/30">Save</button>
+              </div>
+            </div>
+          ) : (
+            <div 
+              onClick={() => setEditMode(true)}
+              className={`rounded-2xl border border-white/5 bg-slate-800/40 p-4 text-xs leading-relaxed text-slate-300 whitespace-pre-wrap cursor-text hover:bg-slate-800/60 transition-colors ${!comment ? 'text-slate-500 italic' : ''}`}
+            >
+              {comment || 'Click to add a note...'}
+            </div>
+          )}
+        </div>
+        <div className="soft-divider my-4"></div>
+        <div>
+          <div className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-400">PM Notes (Excel)</div>
+          <div className={`rounded-2xl border border-white/10 p-4 text-xs leading-relaxed text-slate-300 whitespace-pre-wrap ${c.kpiBg}`}>{product.statusPM || '(No notes)'}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── GANTT COMMENT ── */
+function GanttComment({ code, comment, onSave }) {
+  const [edit, setEdit] = useState(false);
+  const [draft, setDraft] = useState(comment || '');
+
+  if (edit) {
+    return (
+      <div className="w-full flex items-center gap-1">
+        <input 
+          autoFocus
+          className="w-full bg-slate-900 border border-sky-500/50 rounded px-2 py-1 text-[11px] text-slate-200 focus:outline-none"
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') { onSave(code, draft); setEdit(false); }
+            if (e.key === 'Escape') { setEdit(false); setDraft(comment||''); }
+          }}
+          onBlur={() => { onSave(code, draft); setEdit(false); }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div 
+      className={`w-full text-[11px] truncate cursor-text transition-colors px-2 py-1 rounded hover:bg-white/5 ${!comment ? 'text-slate-600 italic' : 'text-slate-300'}`}
+      onClick={() => { setDraft(comment || ''); setEdit(true); }}
+      title={comment || 'Click to add a note'}
+    >
+      {comment || '+ Add note'}
+    </div>
+  );
+}
+
+/* ── GANTT CHART ── */
+function GanttChart({ products, comments, onSaveComment }) {
+  const [sortMode, setSortMode] = useState('urgency');
+  const [search, setSearch] = useState('');
+  const today = useMemo(() => sod(new Date()), []);
+
+  /* pre-process items with gantt urgency */
+  const items = useMemo(() => {
+    const urgencyOrder = { overdue: 0, critical: 1, medium: 2, ok: 3, none: 4 };
+    const arr = products
+      .filter(p => {
+        if (!search) return true;
+        const q = search.toLowerCase();
+        const c = String(p.code || '').toLowerCase();
+        const d = String(p.description || '').toLowerCase();
+        return c.includes(q) || d.includes(q);
+      })
+      .map(p => {
+        const awDate  = p.awDeadline  ? sod(p.awDeadline)  : null;
+        const rtoDate = p.readyToOrder ? sod(p.readyToOrder) : null;
+        const daysToAW = awDate ? Math.ceil((awDate - today) / 86400000) : null;
+        const urgency = awDate && awDate < today ? 'overdue'
+          : daysToAW === null  ? 'none'
+          : daysToAW < 20      ? 'critical'
+          : daysToAW < 40      ? 'medium'
+          : 'ok';
+        return { ...p, awDate, rtoDate, daysToAW, urgency };
+      });
+      
+    if (sortMode === 'urgency') {
+      arr.sort((a, b) => {
+        const d = (urgencyOrder[a.urgency] ?? 4) - (urgencyOrder[b.urgency] ?? 4);
+        if (d !== 0) return d;
+        if (a.daysToAW === null) return 0;
+        return a.daysToAW - b.daysToAW;
+      });
+    }
+    return arr;
+  }, [products, today, sortMode, search]);
+
+  /* chart geometry */
+  const chart = useMemo(() => {
+    const allDates = items.flatMap(p => [p.awDate, p.rtoDate].filter(Boolean));
+    if (!allDates.length) return null;
+
+    const minMs  = Math.min(today.getTime(), ...allDates.map(d => d.getTime()));
+    const maxMs  = Math.max(...allDates.map(d => d.getTime()));
+    const rs     = new Date(minMs - 7  * 86400000);
+    const re     = new Date(maxMs + 14 * 86400000);
+    const span   = re.getTime() - rs.getTime();
+
+    const pct = d => d ? ((sod(d).getTime() - rs.getTime()) / span * 100) : null;
+    const todayP = pct(today);
+
+    /* month tick marks */
+    const ticks = [];
+    const d = new Date(rs);
+    d.setDate(1);
+    if (sod(d) <= rs) d.setMonth(d.getMonth() + 1);
+    while (d <= re) {
+      ticks.push({ label: d.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }), pct: pct(sod(d)) });
+      d.setMonth(d.getMonth() + 1);
+    }
+
+    return { pct, todayP, ticks };
+  }, [items, today]);
+
+  if (!chart || !items.length) return (
+    <p className="text-sm text-slate-400 text-center py-4">No dates available for the chart.</p>
+  );
+
+  const { pct, todayP, ticks } = chart;
+  const LABEL_W = 240;
+
+  return (
+    <div>
+      {/* legend & controls */}
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-slate-500">
+          {Object.entries(GU).map(([k, v]) => (
+            <span key={k} className="flex items-center gap-1.5">
+              <span className="inline-block h-3 w-3 rounded-sm" style={{ background: v.color }}></span>
+              {v.label}
+            </span>
+          ))}
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-3 w-3 rounded-sm bg-slate-300"></span>
+            AW → Ready to Order
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          <input 
+            type="text"
+            placeholder="Search by code or title..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-64 rounded-full border border-slate-700 bg-slate-900/50 px-4 py-2 text-xs text-slate-200 focus:outline-none focus:border-sky-500 placeholder:text-slate-500 shadow-sm"
+          />
+          <div className="flex items-center gap-2 rounded-full border border-slate-700 bg-slate-800/50 px-3 py-2 text-xs shadow-sm">
+            <span className="font-semibold text-slate-400">Sort by:</span>
+            <select
+              value={sortMode}
+              onChange={e => setSortMode(e.target.value)}
+              className="rounded-full border border-slate-600 bg-slate-900 px-3 py-1 text-slate-200 cursor-pointer focus:outline-none focus:border-sky-500"
+            >
+              <option value="urgency">Urgency (Dates)</option>
+              <option value="table">Same as table</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* horizontal scroll wrapper */}
+      <div className="overflow-x-auto border border-slate-700/50 rounded-[24px]">
+        <div className="rounded-[24px] bg-slate-900/40 p-4" style={{ minWidth: '640px' }}>
+
+          {/* timeline header */}
+          <div className="mb-0.5 flex items-end border-b border-slate-700/50 pb-2 select-none">
+            <div className="shrink-0" style={{ width: LABEL_W + 'px' }}></div>
+            <div className="flex-1 relative" style={{ height: '20px' }}>
+              {ticks.map((t, i) => (
+                <div key={i} className="absolute bottom-0" style={{ left: t.pct + '%', transform: 'translateX(-50%)' }}>
+                  <span className="text-xs text-slate-500 whitespace-nowrap leading-none">{t.label}</span>
+                </div>
+              ))}
+              <div className="absolute bottom-0 z-10" style={{ left: todayP + '%', transform: 'translateX(-50%)' }}>
+                <span className="text-xs font-bold text-sky-400 whitespace-nowrap leading-none">Today</span>
+              </div>
+            </div>
+            <div className="shrink-0 pl-4 text-[10px] font-extrabold uppercase tracking-[0.2em] text-slate-500" style={{ width: '220px' }}>Notes</div>
+          </div>
+
+          {/* rows — vertically scrollable */}
+          <div className="pr-1" style={{ maxHeight: '480px', overflowY: 'auto', overflowX: 'hidden' }}>
+            {items.map(p => {
+              const awP   = pct(p.awDate);
+              const rtoP  = pct(p.rtoDate);
+              const ov    = p.urgency === 'overdue';
+              const uc    = GU[p.urgency];
+
+              /* bar 1: urgency segment */
+              let b1L = null, b1W = 0;
+              if (awP !== null) {
+                if (ov) { b1L = Math.max(0, awP); b1W = Math.max(0, todayP - b1L); }
+                else    { b1L = todayP;            b1W = Math.max(0, awP - todayP); }
+              }
+
+              /* bar 2: AW → RtO segment */
+              let b2L = null, b2W = 0;
+              if (awP !== null && rtoP !== null && rtoP > awP) {
+                b2L = awP; b2W = Math.max(0, rtoP - awP);
+              }
+
+              return (
+                <div key={p.id} className="gantt-row flex items-center border-b border-slate-700/50 transition-colors" style={{ height: '38px' }}>
+                  {/* label */}
+                  <div className="shrink-0 pr-4 overflow-visible text-right relative group cursor-default" style={{ width: LABEL_W + 'px' }}>
+                    <div className="font-mono text-[10px] font-semibold tracking-wider truncate leading-tight mb-0.5" style={{ color: ov ? '#f87171' : '#38bdf8' }}>{p.code}</div>
+                    <div className="text-[13px] font-medium text-slate-100 truncate leading-tight">
+                      {p.description}
+                    </div>
+                    {/* tooltip */}
+                    {p.description && p.description.length > 30 && (
+                      <div className="absolute top-1/2 -translate-y-1/2 left-2 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50 bg-slate-800 text-white text-[11px] font-semibold px-3 py-2 rounded-lg shadow-xl border border-slate-600 w-max max-w-[350px] text-left leading-snug">
+                        {p.description}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* bar area */}
+                  <div className="flex-1 relative" style={{ height: '38px' }}>
+                    {/* track */}
+                    <div className="absolute rounded-full bg-slate-800/80 border border-slate-700" style={{ top: '16px', bottom: '16px', left: 0, right: 0 }} />
+
+                    {/* today line */}
+                    <div className="absolute inset-y-0 z-10" style={{ left: todayP + '%', borderLeft: '2px dashed rgba(56,189,248,0.5)', width: 0 }} />
+
+                    {/* bar 1 */}
+                    {b1L !== null && b1W > 0 && (
+                      <div className="absolute rounded-sm" style={{ top: '13px', bottom: '13px', left: b1L + '%', width: b1W + '%', background: uc.color }} />
+                    )}
+
+                    {/* bar 2 */}
+                    {b2L !== null && b2W > 0 && (
+                      <div className="absolute rounded-sm" style={{ top: '15px', bottom: '15px', left: b2L + '%', width: b2W + '%', background: '#475569' }} />
+                    )}
+
+                    {/* AW deadline diamond */}
+                    {awP !== null && (
+                      <div className="absolute inset-y-0 flex items-center z-20 group cursor-default" style={{ left: awP + '%', transform: 'translateX(-50%)' }}>
+                        <div style={{ width: '10px', height: '10px', transform: 'rotate(45deg)', background: uc.color, border: '2px solid #0f172a', boxShadow: '0 0 4px rgba(0,0,0,0.8)', borderRadius: '1px' }} />
+                        <span className="absolute top-[26px] left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-300 whitespace-nowrap">
+                          {p.awDate ? `${String(p.awDate.getDate()).padStart(2,'0')}/${String(p.awDate.getMonth()+1).padStart(2,'0')}` : ''}
+                        </span>
+                        {/* tooltip */}
+                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50 bg-slate-800 text-white text-[11px] font-semibold px-2.5 py-1 rounded-md shadow-lg border border-slate-600 whitespace-nowrap">
+                          AW Deadline
+                        </div>
+                      </div>
+                    )}
+
+                    {/* RtO circle */}
+                    {rtoP !== null && (
+                      <div className="absolute inset-y-0 flex items-center z-20 group cursor-default" style={{ left: rtoP + '%', transform: 'translateX(-50%)' }}>
+                        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#64748b', border: '2px solid #0f172a', boxShadow: '0 0 4px rgba(0,0,0,0.8)' }} />
+                        <span className="absolute bottom-[26px] left-1/2 -translate-x-1/2 text-[10px] font-bold text-sky-200 whitespace-nowrap">
+                          {p.rtoDate ? `${String(p.rtoDate.getDate()).padStart(2,'0')}/${String(p.rtoDate.getMonth()+1).padStart(2,'0')}` : ''}
+                        </span>
+                        {/* tooltip */}
+                        <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50 bg-slate-800 text-white text-[11px] font-semibold px-2.5 py-1 rounded-md shadow-lg border border-slate-600 whitespace-nowrap">
+                          Ready to Order
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* comment area */}
+                  <div className="shrink-0 pl-4 border-l border-slate-700/30 flex items-center h-full" style={{ width: '220px' }}>
+                    <GanttComment 
+                       code={p.code} 
+                       comment={comments ? comments[p.code] : ''} 
+                       onSave={onSaveComment} 
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* marker legend */}
+          <div className="mt-4 flex flex-wrap items-center gap-5 border-t border-slate-700/50 pt-3 text-xs text-slate-400 select-none">
+            <span className="flex items-center gap-1.5">
+              <span style={{ width:'10px', height:'10px', transform:'rotate(45deg)', background:'#94a3b8', border:'2px solid #0f172a', display:'inline-block', borderRadius:'1px' }} />
+              AW Deadline
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span style={{ width:'10px', height:'10px', borderRadius:'50%', background:'#64748b', border:'2px solid #0f172a', display:'inline-block' }} />
+              Ready to Order
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span style={{ width:'16px', display:'inline-block', borderLeft:'2px dashed rgba(56,189,248,0.5)', height:'12px' }} />
+              Today
+            </span>
+            <span className="ml-auto">{items.length} products with dates</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── DESIGNER WORKLOAD ── */
+function DesignerWorkload({ products }) {
+  const data = useMemo(() => {
+    const m = {};
+    for (const p of products) {
+      const g = p.graphic || '(Unassigned)';
+      if (!m[g]) m[g] = { name: g, RETRASADO: 0, EN_RIESGO: 0, total: 0 };
+      m[g].total++;
+      if      (p.riskStatus === 'RETRASADO') m[g].RETRASADO++;
+      else if (p.riskStatus === 'EN_RIESGO') m[g].EN_RIESGO++;
+    }
+    return Object.values(m)
+      .filter(d => d.RETRASADO > 0 || d.EN_RIESGO > 0)
+      .sort((a, b) => (b.RETRASADO * 100 + b.EN_RIESGO) - (a.RETRASADO * 100 + a.EN_RIESGO));
+  }, [products]);
+
+  if (!data.length) return <p className="py-3 text-center text-sm text-slate-500">No bottlenecks detected.</p>;
+  const maxU = Math.max(1, ...data.map(d => d.RETRASADO + d.EN_RIESGO));
+
+  return (
+    <div className="space-y-3">
+      {data.map(d => (
+        <div key={d.name} className="flex items-center gap-3 rounded-[22px] bg-white/5 border border-white/10 px-3 py-3 backdrop-blur">
+          <div className="w-32 shrink-0 truncate text-right text-sm font-semibold text-slate-300" title={d.name}>{d.name}</div>
+          <div className="flex-1 flex items-center gap-1 min-w-0">
+            {d.RETRASADO > 0 && <div className="flex h-[28px] shrink-0 items-center justify-center rounded-lg bg-rose-500/90 text-xs font-bold text-white shadow-[0_0_8px_rgba(244,63,94,0.5)]" style={{ width: `${Math.max(36, (d.RETRASADO/maxU)*65)}%` }}>{d.RETRASADO}</div>}
+            {d.EN_RIESGO  > 0 && <div className="flex h-[28px] shrink-0 items-center justify-center rounded-lg bg-amber-400 text-xs font-bold text-amber-900 shadow-[0_0_8px_rgba(251,191,36,0.5)]" style={{ width: `${Math.max(36, (d.EN_RIESGO/maxU)*65)}%` }}>{d.EN_RIESGO}</div>}
+          </div>
+          <div className="w-16 shrink-0 text-xs tabular-nums text-slate-400">{d.total} prods.</div>
+        </div>
+      ))}
+      <div className="flex items-center gap-4 border-t border-slate-700/50 pt-3 text-xs text-slate-400">
+        <div className="w-32 shrink-0"></div>
+        <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded bg-rose-500/90"></span> Overdue</span>
+        <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded bg-amber-400"></span> At Risk</span>
+      </div>
+    </div>
+  );
+}
+
+/* ── APP ── */
+function App() {
+  const [products,     setProducts]     = useState(null);
+  const [loadDate,     setLoadDate]     = useState(null);
+  const [activeStatus, setActiveStatus] = useState(null);
+  const [selected,     setSelected]     = useState(null);
+  
+  // Tabs: 'table', 'gantt', 'workload'
+  const [activeTab,    setActiveTab]    = useState('table');
+  
+  const [cf, setCf] = useState(EMPTY_CF);
+  const [sort, setSort] = useState({ col: null, dir: 'asc' });
+
+  // Custom comments
+  const [comments, setComments] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('launch-radar-comments') || '{}'); } 
+    catch { return {}; }
+  });
+
+  const handleSaveComment = (code, text) => {
+    setComments(prev => {
+      const next = { ...prev, [code]: text };
+      localStorage.setItem('launch-radar-comments', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  function handleData(data, date) {
+    setProducts(data); setLoadDate(date); setSelected(null); setActiveStatus(null);
+    setCf(EMPTY_CF); setSort({ col: null, dir: 'asc' });
+    setActiveTab('table');
+  }
+
+  const counts = useMemo(() => {
+    if (!products) return {};
+    return Object.keys(SC).reduce((acc, s) => { acc[s] = products.filter(p => p.riskStatus === s).length; return acc; }, {});
+  }, [products]);
+
+  const kpiFiltered = useMemo(() => {
+    if (!products) return [];
+    return activeStatus ? products.filter(p => p.riskStatus === activeStatus) : products;
+  }, [products, activeStatus]);
+
+  const now = useMemo(() => sod(new Date()), []);
+
+  const filteredProducts = useMemo(() => {
+    if (!kpiFiltered) return [];
+    return kpiFiltered.filter(p =>
+      (!cf.code            || p.code.toLowerCase().includes(cf.code.toLowerCase()))               &&
+      (!cf.description     || p.description.toLowerCase().includes(cf.description.toLowerCase())) &&
+      (!cf.pm              || p.pm === cf.pm)                                                      &&
+      (!cf.graphic         || p.graphic === cf.graphic)                                            &&
+      (!cf.approvalStatus  || p.approvalStatus === cf.approvalStatus)                              &&
+      (!cf.riskStatus      || p.riskStatus === cf.riskStatus)                                      &&
+      (!cf.daysOverdueMin  || p.daysOverdue >= parseInt(cf.daysOverdueMin, 10))                    &&
+      matchDate(p.awDeadline, cf.awDeadline, now) && matchDate(p.readyToOrder, cf.readyToOrder, now)
+    );
+  }, [kpiFiltered, cf, now]);
+
+  const sortedProducts = useMemo(() => {
+    if (!sort.col) return filteredProducts;
+    return [...filteredProducts].sort((a, b) => {
+      let va = a[sort.col], vb = b[sort.col];
+      if (va == null && vb == null) return 0;
+      if (va == null) return sort.dir === 'asc' ?  1 : -1;
+      if (vb == null) return sort.dir === 'asc' ? -1 :  1;
+      if (sort.col === 'riskStatus')   { va = SC[va].order; vb = SC[vb].order; }
+      else if (va instanceof Date)     { va = va.getTime(); vb = vb instanceof Date ? vb.getTime() : 0; }
+      else if (typeof va === 'string') { va = va.toLowerCase(); vb = vb.toLowerCase(); }
+      return sort.dir === 'asc'
+        ? (va < vb ? -1 : va > vb ? 1 : 0)
+        : (va > vb ? -1 : va < vb ? 1 : 0);
+    });
+  }, [filteredProducts, sort]);
+
+  if (!products) return <DropZone onData={handleData} />;
+
+  return (
+    <div className="page-shell px-4 py-4 sm:px-6 lg:px-8 lg:py-6 text-slate-200">
+      <div className="hero-orb left-[-9rem] top-16 h-64 w-64 bg-sky-500/20"></div>
+      <div className="hero-orb right-[-8rem] top-24 h-72 w-72 bg-indigo-500/20"></div>
+      <div className="hero-orb bottom-[-10rem] left-[15%] h-72 w-72 bg-emerald-500/10"></div>
+
+      <div className="relative mx-auto max-w-screen-2xl space-y-5">
+
+        {/* header */}
+        <div className="surface-dark rounded-[30px] px-5 py-5 text-white sm:px-7 sm:py-6 shadow-[0_0_40px_rgba(14,165,233,0.05)] border border-white/5">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="flex items-start gap-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-[20px] bg-white/5 border border-white/10 text-2xl shadow-lg backdrop-blur">
+                ↗
+              </div>
+              <div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-sky-300">
+                  Operations Dashboard
+                </div>
+                <h1 className="mt-3 text-3xl font-bold tracking-[-0.06em] sm:text-4xl text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">Launch Radar</h1>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400 sm:text-base">
+                  Executive view to prioritise delayed products, detect risks, and track key dates with much clearer visibility.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+              <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200 backdrop-blur">
+                <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">Current load</div>
+                <div className="mt-1 font-semibold text-white">{products.length} products{loadDate && <> · {fmtLoadDate(loadDate)}</>}</div>
+              </div>
+              <button onClick={() => { setProducts(null); setLoadDate(null); }}
+                className="rounded-full border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm font-semibold text-rose-300 transition hover:bg-rose-500/20 hover:border-rose-500/50">
+                Load another file
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* KPI cards */}
+        <div className="flex flex-wrap gap-3">
+          <button onClick={() => setActiveStatus(null)}
+            className={`relative flex min-w-[170px] flex-1 flex-col items-start gap-3 overflow-hidden rounded-[24px] border px-5 py-5 text-left transition-all duration-200 cursor-pointer select-none
+              ${!activeStatus
+                ? 'bg-sky-950/40 border-sky-500/30 shadow-lg -translate-y-0.5'
+                : 'surface-card border-white/10 hover:-translate-y-0.5 hover:border-slate-600/50 hover:shadow-lg'}`}
+          >
+            <div className={`metric-glow ${!activeStatus ? 'bg-sky-500' : 'bg-slate-500'}`}></div>
+            <div className="relative flex w-full items-start justify-between gap-3">
+              <div>
+                <div className={`text-[11px] font-extrabold uppercase tracking-[0.24em] ${!activeStatus ? 'text-sky-400' : 'text-slate-400'}`}>
+                  All Products
+                </div>
+                <div className="mt-1 font-display text-[2.5rem] font-bold leading-none tracking-[-0.03em] text-white">
+                  {products.length}
+                </div>
+              </div>
+            </div>
+          </button>
+          {Object.keys(SC).map(s => (
+            <KPICard key={s} status={s} count={counts[s] ?? 0}
+              active={activeStatus === s}
+              onToggle={() => setActiveStatus(v => v === s ? null : s)} />
+          ))}
+        </div>
+
+        {/* Tabs navigation */}
+        <div className="flex items-center gap-2 border-b border-white/10 pb-4">
+          <button
+            onClick={() => setActiveTab('table')}
+            className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${
+              activeTab === 'table'
+                ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30 shadow-[0_0_15px_rgba(14,165,233,0.15)]'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+            }`}
+          >
+            Product Table
+          </button>
+          <button
+            onClick={() => setActiveTab('gantt')}
+            className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${
+              activeTab === 'gantt'
+                ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30 shadow-[0_0_15px_rgba(14,165,233,0.15)]'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+            }`}
+          >
+            Gantt Chart
+          </button>
+          <button
+            onClick={() => setActiveTab('workload')}
+            className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${
+              activeTab === 'workload'
+                ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30 shadow-[0_0_15px_rgba(14,165,233,0.15)]'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+            }`}
+          >
+            Design Workload
+          </button>
+        </div>
+
+        {/* Tab Content */}
+        <div className="mt-4">
+          {activeTab === 'table' && (
+            <div className="flex flex-col items-start gap-4 xl:flex-row animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div className="flex-1 min-w-0">
+                <ProductTable
+                  products={kpiFiltered}
+                  selected={selected}
+                  onSelect={setSelected}
+                  cf={cf}
+                  setCf={setCf}
+                  sort={sort}
+                  setSort={setSort}
+                  sortedProducts={sortedProducts}
+                />
+              </div>
+              {selected && <SidePanel product={selected} onClose={() => setSelected(null)} comment={comments[selected.code]} onSaveComment={(txt) => handleSaveComment(selected.code, txt)} />}
+            </div>
+          )}
+
+          {activeTab === 'gantt' && (
+            <div className="surface-card overflow-hidden rounded-[28px] border border-white/10 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div className="px-5 py-4 border-b border-slate-700/50">
+                <h2 className="text-left font-display text-xl font-bold tracking-[-0.04em] text-white">Launch Timelines</h2>
+                <p className="mt-1 text-left text-xs text-slate-400">
+                  Start: today · AW Deadline ◆ · Ready to Order ●  ·  Synced with table filters
+                </p>
+              </div>
+              <div className="px-5 pb-5 pt-4">
+                <GanttChart products={sortedProducts} comments={comments} onSaveComment={handleSaveComment} />
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'workload' && (
+            <div className="surface-card rounded-[28px] border border-white/10 p-5 animate-in fade-in slide-in-from-bottom-2 duration-300 max-w-4xl mx-auto">
+              <h2 className="font-display text-xl font-bold tracking-[-0.04em] text-white">Designer Workload Analysis</h2>
+              <p className="mb-6 mt-1 text-xs text-slate-400">Overdue and at-risk products per person, sorted by criticality.</p>
+              <DesignerWorkload products={products} />
+            </div>
+          )}
+        </div>
+
+        <p className="pb-2 pt-6 text-center text-xs text-slate-500">
+          Launch Radar · All processing happens in your browser · No data leaves your device
+        </p>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
