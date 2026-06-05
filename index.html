@@ -243,14 +243,14 @@ function createAuthClient() {
   });
 }
 
-function AppLogo({ className = '', imageClassName = '', subtitle = '' }) {
+function AppLogo({ className = '', imageClassName = 'max-w-[180px]', subtitle = '' }) {
   return (
     <div className={`flex flex-col items-start ${className}`}>
       <div className="rounded-[20px] border border-white/8 bg-white/[0.03] p-1.5 shadow-[0_10px_28px_rgba(0,0,0,0.18)] backdrop-blur-sm">
         <img
-          src="./assets/launch-radar-logo.png"
+          src="https://i.ibb.co/G3RxY11q/Gemini-Generated-Image-kghspbkghspbkghs.png"
           alt="Craze Launch Radar"
-          className={`h-auto w-full max-w-[280px] rounded-[16px] opacity-95 drop-shadow-[0_8px_20px_rgba(0,0,0,0.22)] ${imageClassName}`}
+          className={`h-auto w-full rounded-[16px] opacity-95 drop-shadow-[0_8px_20px_rgba(0,0,0,0.22)] ${imageClassName}`}
         />
       </div>
       {subtitle && (
@@ -405,7 +405,6 @@ function DropZone({ onData, session, onSignOut }) {
           </div>
           <AppLogo
             className="mt-6"
-            imageClassName="max-w-[250px]"
             subtitle="Turn your Excel into a clear, visual, prioritised view to spot delays, bottlenecks, and upcoming critical dates, all inside your browser."
           />
 
@@ -518,7 +517,6 @@ function AuthSetupScreen() {
           </div>
           <AppLogo
             className="mt-6"
-            imageClassName="max-w-[235px]"
             subtitle="The app is now prepared to require an account before opening. To activate it on Vercel, connect Supabase Auth and keep the URL behind email sign up or sign in."
           />
         </div>
@@ -635,7 +633,6 @@ function AuthScreen({ client }) {
           </div>
           <AppLogo
             className="mt-6"
-            imageClassName="max-w-[235px]"
             subtitle="To use the app on its Vercel URL, users now need to create an account or authenticate by email first."
           />
 
@@ -1481,7 +1478,6 @@ function App() {
                 </div>
                 <AppLogo
                   className="mt-4"
-                  imageClassName="max-w-[215px]"
                   subtitle="Executive view to prioritise delayed products, detect risks, and track key dates with much clearer visibility."
                 />
               </div>
