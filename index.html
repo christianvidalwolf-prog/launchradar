@@ -53,7 +53,7 @@
     .page-shell {
       position: relative;
       min-height: 100vh;
-      overflow: hidden;
+      overflow-x: hidden;
     }
     .hero-orb {
       position: absolute;
@@ -288,7 +288,7 @@ function KPICard({ status, count, active, onToggle }) {
   const c = SC[status];
   return (
     <button onClick={onToggle}
-      className={`relative flex min-w-[170px] flex-1 flex-col items-start gap-3 overflow-hidden rounded-[24px] border px-5 py-5 text-left transition-all duration-200 cursor-pointer select-none
+      className={`relative flex min-w-[130px] sm:min-w-[170px] flex-1 flex-col items-start gap-3 overflow-hidden rounded-[24px] border px-4 py-4 sm:px-5 sm:py-5 text-left transition-all duration-200 cursor-pointer select-none
         ${active
           ? `${c.kpiBg} ${c.kpiBorder} shadow-lg -translate-y-0.5`
           : 'surface-card border-white/10 hover:-translate-y-0.5 hover:border-slate-600/50 hover:shadow-lg'}`}
@@ -499,7 +499,7 @@ function ProductTable({ products, selected, onSelect, cf, setCf, sort, setSort, 
           </button>
         )}
       </div>
-      <div className="overflow-auto">
+      <div className="overflow-x-auto w-full scroll-smooth" style={{ WebkitOverflowScrolling: 'touch' }}>
         <table className="data-grid w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-slate-700">
@@ -801,7 +801,7 @@ function GanttChart({ products, comments, onSaveComment }) {
       </div>
 
       {/* horizontal scroll wrapper */}
-      <div className="overflow-x-auto border border-slate-700/50 rounded-[24px]">
+      <div className="overflow-x-auto border border-slate-700/50 rounded-[24px] w-full scroll-smooth" style={{ WebkitOverflowScrolling: 'touch' }}>
         <div className="rounded-[24px] bg-slate-900/40 p-4" style={{ minWidth: '640px' }}>
 
           {/* timeline header */}
@@ -1098,7 +1098,7 @@ function App() {
         {/* KPI cards */}
         <div className="flex flex-wrap gap-3">
           <button onClick={() => setActiveStatus(null)}
-            className={`relative flex min-w-[170px] flex-1 flex-col items-start gap-3 overflow-hidden rounded-[24px] border px-5 py-5 text-left transition-all duration-200 cursor-pointer select-none
+            className={`relative flex min-w-[130px] sm:min-w-[170px] flex-1 flex-col items-start gap-3 overflow-hidden rounded-[24px] border px-4 py-4 sm:px-5 sm:py-5 text-left transition-all duration-200 cursor-pointer select-none
               ${!activeStatus
                 ? 'bg-sky-950/40 border-sky-500/30 shadow-lg -translate-y-0.5'
                 : 'surface-card border-white/10 hover:-translate-y-0.5 hover:border-slate-600/50 hover:shadow-lg'}`}
