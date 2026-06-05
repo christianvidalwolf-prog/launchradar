@@ -183,7 +183,7 @@ const SC = {
 };
 
 /* ── DROPBOX DATA SOURCE ── */
-const DROPBOX_URL = 'https://www.dropbox.com/scl/fi/a8obsjt5w7v851tiozolc/Items.xlsx?rlkey=1zoynfpwamdxzbafa5c3v1ofv&st=qmvr4q05&dl=1';
+const DROPBOX_PROXY_URL = '/api/dropbox';
 
 /* ── GANTT URGENCY CONFIG ── */
 const GU = {
@@ -1311,7 +1311,7 @@ function App() {
     setDataLoading(true);
     setDataError(null);
     try {
-      const res = await fetch(DROPBOX_URL);
+      const res = await fetch(DROPBOX_PROXY_URL, { cache: 'no-store' });
       if (!res.ok) throw new Error(`HTTP ${res.status} — ${res.statusText}`);
       const buf = await res.arrayBuffer();
       const data = parseXLSX(buf);
