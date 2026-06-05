@@ -887,7 +887,7 @@ function ProductTable({ products, selected, onSelect, cf, setCf, sort, setSort, 
                     {p.statusPM && (
                       <div 
                         onClick={(e) => { e.stopPropagation(); toggleNote(p.code); }}
-                        className={`text-[11px] text-slate-400 font-normal mt-0.5 cursor-pointer hover:text-slate-300 transition-colors select-none ${expandedNotes[p.code] ? 'whitespace-normal break-words' : 'truncate'}`} 
+                        className={`text-[11px] text-slate-200/90 font-normal mt-0.5 cursor-pointer hover:text-white transition-colors select-none ${expandedNotes[p.code] ? 'whitespace-normal break-words' : 'truncate'}`} 
                         title={`Click to expand/collapse. PM Note: ${p.statusPM}`}
                       >
                         💬 {p.statusPM}
@@ -1230,7 +1230,7 @@ function GanttChart({ products, comments, onSaveComment }) {
                     {p.statusPM && (
                       <div 
                         onClick={() => toggleNote(p.code)}
-                        className={`mt-1 text-[10px] text-slate-400 text-right w-full cursor-pointer hover:text-slate-300 transition-colors select-none ${expandedNotes[p.code] ? 'whitespace-normal break-words' : 'truncate'}`}
+                        className={`mt-1 text-[10px] text-slate-200/90 text-right w-full cursor-pointer hover:text-white transition-colors select-none ${expandedNotes[p.code] ? 'whitespace-normal break-words' : 'truncate'}`}
                         title={`Click to expand/collapse. PM Note: ${p.statusPM}`}
                       >
                         <span className="text-sky-400/80 font-medium">Comment:</span> {p.statusPM}
