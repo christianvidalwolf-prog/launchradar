@@ -221,8 +221,27 @@ const fmtLoadDate = d => d
   ? d.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })
   : '';
 
+const fmtDateTime = value => {
+  if (!value) return '—';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? '—'
+    : date.toLocaleString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+};
+
 /* ── AUTH CONFIG ── */
 const AUTH_CONFIG = window.LAUNCH_RADAR_AUTH || {};
+const ADMIN_EMAIL = 'christian.vidal@craze-group.com';
+const ADMIN_USERS_API_URL = '/api/admin-users';
+
+const normalizeEmail = value => String(value || '').trim().toLowerCase();
+const isAdminEmail = value => normalizeEmail(value) === ADMIN_EMAIL;
 
 function getAuthRedirectUrl() {
   return `${window.location.origin}${window.location.pathname}`;
@@ -734,6 +753,109 @@ function AuthScreen({ client }) {
               Supabase Auth stores the session in the browser, so authenticated users stay signed in on the Vercel deployment until they log out.
             </p>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdminUsersPanel({ users, loading, error, onRefresh }) {
+  const confirmedUsers = users.filter(user => Boolean(user.confirmedAt)).length;
+  const pendingUsers = users.length - confirmedUsers;
+
+  return (
+    <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
+      <div className="surface-card rounded-[28px] border border-white/10 p-5 sm:p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-400">Admin view</div>
+            <h2 className="mt-2 font-display text-2xl font-bold tracking-[-0.04em] text-white">Registered users</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+              This tab is only available for {ADMIN_EMAIL} and shows the users who have created access for the app.
+            </p>
+          </div>
+          <button
+            onClick={onRefresh}
+            disabled={loading}
+            className="rounded-full border border-sky-500/30 bg-sky-500/10 px-4 py-2.5 text-sm font-semibold text-sky-300 transition hover:bg-sky-500/20 hover:border-sky-500/50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loading ? 'Loading users…' : '↻ Refresh users'}
+          </button>
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="surface-card rounded-[24px] border border-white/10 p-5">
+          <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-400">Total users</div>
+          <div className="mt-3 font-display text-4xl font-bold tracking-[-0.04em] text-white">{users.length}</div>
+        </div>
+        <div className="surface-card rounded-[24px] border border-emerald-500/20 p-5">
+          <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-emerald-300/80">Confirmed</div>
+          <div className="mt-3 font-display text-4xl font-bold tracking-[-0.04em] text-emerald-300">{confirmedUsers}</div>
+        </div>
+        <div className="surface-card rounded-[24px] border border-amber-500/20 p-5">
+          <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-amber-300/80">Pending confirmation</div>
+          <div className="mt-3 font-display text-4xl font-bold tracking-[-0.04em] text-amber-300">{pendingUsers}</div>
+        </div>
+      </div>
+
+      <div className="surface-card overflow-hidden rounded-[28px] border border-white/10">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700/50 bg-slate-900/40 px-5 py-4">
+          <div>
+            <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-400">User directory</div>
+            <span className="mt-1 block text-sm font-medium text-slate-300">Sorted by most recent registration</span>
+          </div>
+        </div>
+
+        {error && (
+          <div className="mx-5 mt-5 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
+            {error}
+          </div>
+        )}
+
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-slate-700/50 bg-slate-900/40">
+                <th className="px-4 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.2em] text-slate-500">Email</th>
+                <th className="px-4 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.2em] text-slate-500">Status</th>
+                <th className="px-4 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.2em] text-slate-500">Registered</th>
+                <th className="px-4 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.2em] text-slate-500">Confirmed</th>
+                <th className="px-4 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.2em] text-slate-500">Last sign in</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading && users.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-16 text-center text-sm text-slate-400">Loading registered users…</td>
+                </tr>
+              ) : users.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-16 text-center text-sm text-slate-400">No registered users found yet.</td>
+                </tr>
+              ) : (
+                users.map(user => (
+                  <tr key={user.id} className="border-b border-slate-700/40 bg-slate-900/20 transition-colors hover:bg-white/[0.03] last:border-0">
+                    <td className="px-4 py-3 font-medium text-slate-200">{user.email || '—'}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold ${
+                          user.confirmedAt
+                            ? 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                            : 'border border-amber-500/30 bg-amber-500/10 text-amber-300'
+                        }`}
+                      >
+                        {user.confirmedAt ? 'Confirmed' : 'Pending'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs text-slate-400">{fmtDateTime(user.createdAt)}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-slate-400">{fmtDateTime(user.confirmedAt)}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-slate-400">{fmtDateTime(user.lastSignInAt)}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -1376,7 +1498,7 @@ function App() {
   const [activeStatus, setActiveStatus] = useState(null);
   const [selected,     setSelected]     = useState(null);
   
-  // Tabs: 'table', 'gantt', 'workload'
+  // Tabs: 'table', 'gantt', 'workload', 'users'
   const [activeTab,    setActiveTab]    = useState('table');
   
   const [cf, setCf] = useState(EMPTY_CF);
@@ -1411,6 +1533,10 @@ function App() {
     try { return JSON.parse(localStorage.getItem('launch-radar-comments') || '{}'); } 
     catch { return {}; }
   });
+  const [registeredUsers, setRegisteredUsers] = useState([]);
+  const [usersLoaded, setUsersLoaded] = useState(false);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersError, setUsersError] = useState(null);
 
   // Fetch comments from Supabase once session is loaded
   useEffect(() => {
@@ -1485,6 +1611,9 @@ function App() {
     setActiveTab('table');
   }
 
+  const currentUserEmail = session?.user?.email || '';
+  const isAdminUser = isAdminEmail(currentUserEmail);
+
   useEffect(() => {
     if (!authClient) return;
 
@@ -1516,6 +1645,45 @@ function App() {
     }
   }, [session]);
 
+  useEffect(() => {
+    if (!isAdminUser && activeTab === 'users') {
+      setActiveTab('table');
+    }
+  }, [isAdminUser, activeTab]);
+
+  async function loadRegisteredUsers() {
+    if (!session?.access_token || !isAdminUser) return;
+
+    setUsersLoading(true);
+    setUsersError(null);
+
+    try {
+      const res = await fetch(ADMIN_USERS_API_URL, {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(payload?.error || 'Unable to load registered users.');
+      }
+
+      setRegisteredUsers(Array.isArray(payload?.users) ? payload.users : []);
+      setUsersLoaded(true);
+    } catch (err) {
+      setUsersError(err.message || 'Unable to load registered users.');
+    } finally {
+      setUsersLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (activeTab === 'users' && isAdminUser && !usersLoading && !usersLoaded && !usersError) {
+      loadRegisteredUsers();
+    }
+  }, [activeTab, isAdminUser, usersLoading, usersLoaded, usersError]);
+
   async function handleSignOut() {
     if (!authClient) return;
     await authClient.auth.signOut({ scope: 'local' });
@@ -1526,6 +1694,9 @@ function App() {
     setCf(EMPTY_CF);
     setSort({ col: null, dir: 'asc' });
     setActiveTab('table');
+    setRegisteredUsers([]);
+    setUsersLoaded(false);
+    setUsersError(null);
   }
 
   const counts = useMemo(() => {
@@ -1679,6 +1850,18 @@ function App() {
           >
             Design Workload
           </button>
+          {isAdminUser && (
+            <button
+              onClick={() => setActiveTab('users')}
+              className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${
+                activeTab === 'users'
+                  ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30 shadow-[0_0_15px_rgba(14,165,233,0.15)]'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+              }`}
+            >
+              Registered Users
+            </button>
+          )}
         </div>
 
         {/* Tab Content */}
@@ -1721,6 +1904,15 @@ function App() {
               <p className="mb-6 mt-1 text-xs text-slate-400">Overdue and at-risk products per person, sorted by criticality.</p>
               <DesignerWorkload products={products} />
             </div>
+          )}
+
+          {activeTab === 'users' && isAdminUser && (
+            <AdminUsersPanel
+              users={registeredUsers}
+              loading={usersLoading}
+              error={usersError}
+              onRefresh={loadRegisteredUsers}
+            />
           )}
         </div>
 
